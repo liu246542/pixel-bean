@@ -68,7 +68,7 @@ export async function generateImage(
   onProgress?: (progress: number) => void,
 ): Promise<AIResult> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 180_000);
+  const timer = setTimeout(() => controller.abort(), 360_000);
   try {
     // Signal that work has started (0%) if a progress callback was supplied
     onProgress?.(0);

@@ -1,7 +1,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
@@ -105,15 +105,35 @@ const server = http.createServer(async (req, res) => {
       // Write input file
       fs.writeFileSync(inputPath, Buffer.from(base64Data, 'base64'));
 
-      // Call codex — use execFileSync with args array to avoid shell injection
+      // Record newest generated image before calling codex
+      const codexHome = process.env.CODEX_HOME || path.join(process.env.HOME || '', '.codex');
+      const genDir = path.join(codexHome, 'generated_images');
+      const beforeTs = Date.now();
+
+      // Call codex — pass prompt via env variable to avoid shell injection
       const codexPrompt = `${prompt}。输入图片在 ${inputPath}，请基于这张图片生成新图，保存到 ${outputPath}`;
-      execFileSync('codex', ['exec', codexPrompt, '--sandbox', 'workspace-write'], {
-        timeout: 120_000,
-        stdio: 'pipe',
+      execSync('echo "$CODEX_PROMPT" | codex exec -', {
+        timeout: 300_000,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: tmpDir,
+        shell: '/bin/bash',
+        env: { ...process.env, CODEX_PROMPT: codexPrompt },
       });
 
-      // Read output file
-      const outputBuffer = fs.readFileSync(outputPath);
+      // Find the output image: check explicit path first, then scan codex generated_images
+      let outputBuffer: Buffer;
+      if (fs.existsSync(outputPath)) {
+        outputBuffer = fs.readFileSync(outputPath);
+      } else {
+        // Codex saves to ~/.codex/generated_images/<session>/<file>.png
+        // Find the newest image created after our call
+        const findCmd = `find "${genDir}" -name '*.png' -newer "${inputPath}" -printf '%T@ %p\\n' 2>/dev/null | sort -nr | head -1 | cut -d' ' -f2-`;
+        const newest = execSync(findCmd, { encoding: 'utf-8' }).trim();
+        if (!newest || !fs.existsSync(newest)) {
+          throw new Error('Codex did not produce an output image');
+        }
+        outputBuffer = fs.readFileSync(newest);
+      }
       const outputBase64 = outputBuffer.toString('base64');
 
       sendJson(res, 200, {
