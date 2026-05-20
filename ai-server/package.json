@@ -1,0 +1,12 @@
+{
+  "name": "pixel-bean-ai-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "npx tsx server.ts"
+  },
+  "dependencies": {
+    "tsx": "^4.0.0"
+  }
+}
