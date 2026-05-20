@@ -52,12 +52,19 @@ const $cropBtn = document.getElementById('cropBtn') as HTMLButtonElement;
 const $aiActions = document.getElementById('aiActions') as HTMLDivElement;
 const $aiOptimize = document.getElementById('aiOptimize') as HTMLButtonElement;
 const $aiGenerate = document.getElementById('aiGenerate') as HTMLButtonElement;
+const $aiPromptWrap = document.getElementById('aiPromptWrap') as HTMLDivElement;
 const $aiPrompt = document.getElementById('aiPrompt') as HTMLTextAreaElement;
 
 const $originalCanvas = document.getElementById('originalCanvas') as HTMLCanvasElement;
+const $originalPreview = document.getElementById('originalPreview') as HTMLImageElement;
 const $previewCanvas = document.getElementById('previewCanvas') as HTMLCanvasElement;
 
 const $tooltip = document.getElementById('tooltip') as HTMLDivElement;
+
+const $editToggle = document.getElementById('editToggle') as HTMLButtonElement;
+const $editToolbar = document.getElementById('editToolbar') as HTMLDivElement;
+const $editPalette = document.getElementById('editPalette') as HTMLDivElement;
+const $editDone = document.getElementById('editDone') as HTMLButtonElement;
 
 const $granularity = document.getElementById('granularity') as HTMLInputElement;
 const $granularityVal = document.getElementById('granularityVal') as HTMLSpanElement;
@@ -84,6 +91,8 @@ let originalImageSrc: string | null = null;
 let grid: MappedPixel[][] = [];
 const excludedHexes = new Set<string>();
 let aiConfig: AIServiceConfig | null = null;
+let editMode = false;
+let editColor: { rgb: { r: number; g: number; b: number }; hex: string } | null = null;
 
 // ── Initialization ──────────────────────────────────────────────────────────
 
@@ -102,14 +111,12 @@ function init(): void {
     $aiUrl.value = `${aiConfig.url}?token=${aiConfig.token}`;
   }
 
-  // Set default AI prompt
-  $aiPrompt.value = DEFAULT_PROMPT;
-
   // Bind events
   bindUploadEvents();
   bindCropEvents();
   bindSettingsEvents();
   bindPreviewEvents();
+  bindEditEvents();
   bindExportEvents();
   bindAiEvents();
 }
@@ -185,13 +192,21 @@ function processImage(): void {
     drawPreview($previewCanvas, grid, currentSystem);
     updateColorStats();
 
+    // Show original image preview
+    $originalPreview.src = imageSrc!;
+    $originalPreview.classList.remove('hidden');
+
     // Enable export buttons and show image actions
     $exportGrid.disabled = false;
     $exportStats.disabled = false;
     $imageActions.classList.remove('hidden');
+    $editToggle.classList.remove('hidden');
 
     // Show AI actions if connected
-    if (aiConfig) $aiActions.classList.remove('hidden');
+    if (aiConfig) {
+      $aiActions.classList.remove('hidden');
+      $aiPromptWrap.classList.remove('hidden');
+    }
   };
   img.src = imageSrc;
 }
@@ -350,6 +365,70 @@ function bindPreviewEvents(): void {
   });
 }
 
+// ── Pixel editing ───────────────────────────────────────────────────────────
+
+function bindEditEvents(): void {
+  $editToggle.addEventListener('click', () => {
+    editMode = true;
+    $editToolbar.classList.remove('hidden');
+    $editToggle.classList.add('hidden');
+    $previewCanvas.style.cursor = 'crosshair';
+    buildEditPalette();
+  });
+
+  $editDone.addEventListener('click', () => {
+    editMode = false;
+    editColor = null;
+    $editToolbar.classList.add('hidden');
+    $editToggle.classList.remove('hidden');
+    $previewCanvas.style.cursor = '';
+  });
+
+  $previewCanvas.addEventListener('click', (e) => {
+    if (!editMode || !editColor || grid.length === 0) return;
+    const hit = getCellAt($previewCanvas, grid, e.clientX, e.clientY);
+    if (!hit || hit.cell.isExternal) return;
+
+    hit.cell.color = { ...editColor.rgb };
+    hit.cell.paletteId = editColor.hex;
+    drawPreview($previewCanvas, grid, currentSystem);
+    updateColorStats();
+  });
+}
+
+function buildEditPalette(): void {
+  $editPalette.innerHTML = '';
+  const colorsInGrid = new Map<string, { r: number; g: number; b: number }>();
+
+  for (const row of grid) {
+    for (const cell of row) {
+      if (cell.isExternal || cell.paletteId === TRANSPARENT_KEY) continue;
+      const hex = rgbToHex(cell.color.r, cell.color.g, cell.color.b);
+      if (!colorsInGrid.has(hex)) colorsInGrid.set(hex, { ...cell.color });
+    }
+  }
+
+  // Also add some common palette colors not in the grid
+  const activePalette = getActivePalette();
+  for (const pc of activePalette.slice(0, 30)) {
+    const hex = pc.name.toUpperCase();
+    if (!colorsInGrid.has(hex) && pc.color) colorsInGrid.set(hex, { ...pc.color });
+  }
+
+  for (const [hex, rgb] of colorsInGrid) {
+    const swatch = document.createElement('div');
+    swatch.className = 'edit-palette-color';
+    swatch.style.backgroundColor = hex;
+    swatch.title = getDisplayKey(hex, currentSystem);
+    swatch.addEventListener('click', () => {
+      editColor = { rgb, hex };
+      $editPalette.querySelectorAll('.edit-palette-color').forEach(el => el.classList.remove('active'));
+      swatch.classList.add('active');
+    });
+    $editPalette.appendChild(swatch);
+  }
+}
+
 // ── Crop ────────────────────────────────────────────────────────────────────
 
 function bindCropEvents(): void {
@@ -409,6 +488,7 @@ function bindAiEvents(): void {
       saveConfig(config);
       // Show AI actions (generate works without image, optimize needs image)
       $aiActions.classList.remove('hidden');
+      $aiPromptWrap.classList.remove('hidden');
     } else {
       $aiStatus.textContent = 'Connection failed';
       $aiStatus.className = 'ai-status error';
@@ -448,7 +528,8 @@ function bindAiEvents(): void {
     if (!aiConfig) return;
     const userPrompt = $aiPrompt.value.trim();
     if (!userPrompt) {
-      alert('请输入图案描述（如：一只可爱的猫咪）');
+      $aiPrompt.placeholder = '请输入图案描述（如：一只可爱的猫咪）';
+      $aiPrompt.focus();
       return;
     }
 

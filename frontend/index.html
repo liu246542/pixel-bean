@@ -33,13 +33,17 @@
           <p>拖放图片到此处，或点击选择</p>
         </div>
 
-        <div id="imageActions" class="image-actions hidden">
-          <button id="cropBtn" class="btn btn--sm">裁剪</button>
+        <div class="action-bar">
+          <div id="imageActions" class="image-actions hidden">
+            <button id="cropBtn" class="btn btn--sm">裁剪</button>
+          </div>
+          <div id="aiActions" class="ai-actions hidden">
+            <button id="aiOptimize" class="btn btn--sm btn--primary">AI 优化</button>
+            <button id="aiGenerate" class="btn btn--sm">AI 生成</button>
+          </div>
         </div>
 
-        <div id="aiActions" class="ai-actions hidden">
-          <button id="aiOptimize" class="btn btn--primary">AI 优化</button>
-          <button id="aiGenerate" class="btn">AI 生成</button>
+        <div id="aiPromptWrap" class="ai-prompt-wrap hidden">
           <textarea
             id="aiPrompt"
             class="ai-prompt"
@@ -51,9 +55,24 @@
         <!-- Hidden processing canvas -->
         <canvas id="originalCanvas" hidden></canvas>
 
-        <div class="preview-wrap">
-          <canvas id="previewCanvas"></canvas>
-          <div id="tooltip" class="tooltip hidden"></div>
+        <div class="dual-preview">
+          <div class="preview-pane" id="originalPane">
+            <h4>原图</h4>
+            <img id="originalPreview" class="preview-img hidden" />
+          </div>
+          <div class="preview-pane">
+            <h4>拼豆图案 <button id="editToggle" class="btn btn--sm hidden">编辑</button></h4>
+            <div class="preview-wrap">
+              <canvas id="previewCanvas"></canvas>
+              <div id="tooltip" class="tooltip hidden"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="editToolbar" class="edit-toolbar hidden">
+          <span>选择颜色：</span>
+          <div id="editPalette" class="edit-palette"></div>
+          <button id="editDone" class="btn btn--sm btn--primary">完成编辑</button>
         </div>
 
       </section>
