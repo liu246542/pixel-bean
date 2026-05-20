@@ -1,74 +1,95 @@
 # Pixel Bean
 
-A browser-based perler bead pattern generator. Upload any image, choose a bead
-color system, and instantly get a printable pixel pattern with a bead count
-summary.
+A modular perler bead (fuse bead) pattern generator. Upload an image, pixelate it, map colors to real bead palettes, and export a printable pattern with bead counts.
+
+**[中文说明](./README.zh-CN.md)**
 
 ## Features
 
-- Pixelate any image to a configurable grid size
-- Supports multiple bead color systems: MARD, COCO, 漫漫, 盼盼, 咪小窝
-- Dominant-color or average-color pixel reduction modes
-- Erase individual cells on the output grid
-- Export the pattern as a PNG or PDF
+- **Image pixelation** — adjustable grid size, dominant-color or average-color modes
+- **5 bead color systems** — MARD, COCO, 漫漫, 盼盼, 咪小窝 (291 colors)
+- **Smart color merging** — reduce similar colors with adjustable threshold
+- **Background removal** — auto-detect white borders
+- **Color exclusion** — remove unwanted colors, auto-remap to nearest match
+- **Export** — download key-labeled grid PNG and color statistics PNG
+- **Optional AI optimization** — connect to a local AI service (via Codex CLI) to transform images into bead-friendly flat-color style before pixelation
 
-## Usage
+## Architecture
+
+```
+pixel-bean/
+├── frontend/       Pure static SPA (Vite + vanilla TypeScript)
+│                   Deployable to GitHub Pages, Vercel, or any static host
+├── ai-server/      Optional local Node.js service for AI image generation
+│                   Calls Codex CLI, communicates with frontend via WebSocket
+└── docs/           Design specs and implementation plans
+```
+
+The frontend works standalone — no backend needed for core functionality. The AI server is optional and only required for the "AI optimize" feature.
+
+## Quick Start
+
+### Frontend
 
 ```bash
 cd frontend
 npm install
-npm run dev        # start local dev server
-npm run build      # production build → dist/
-npm run preview    # preview the production build locally
+npm run dev          # dev server at http://localhost:5173
 ```
 
-Open `http://localhost:5173` in your browser.
+### AI Server (optional)
 
-### Steps
+```bash
+cd ai-server
+npm install
+cp .env.example .env # edit TOKEN and proxy settings
+npm start            # starts on http://localhost:3456
+```
 
-1. Click **Upload Image** and choose a photo or graphic.
-2. Set the **grid width** (number of bead columns).
-3. Choose a **color system** that matches the beads you own.
-4. Select a **pixelation mode** (dominant or average).
-5. Click **Generate Pattern**.
-6. Optionally erase cells by clicking them on the grid.
-7. Click **Export** to download the printable pattern.
+Requires [Codex CLI](https://github.com/openai/codex) installed and authenticated (`codex login`).
 
-## Development
+In the frontend, enter the AI service URL (e.g. `http://localhost:3456?token=yourtoken`) and click "Test Connection". Once connected, an "AI Optimize" button appears when you upload an image.
+
+### Production Build
+
+```bash
+cd frontend
+npm run build        # outputs to dist/
+```
+
+Deploy `dist/` to GitHub Pages or any static host.
+
+## AI Service Protocol
+
+The AI server uses **WebSocket** for image generation (avoids HTTP timeout issues with reverse proxies like Cloudflare Tunnel).
+
+| Endpoint | Protocol | Purpose |
+|----------|----------|---------|
+| `GET /health?token=...` | HTTP | Health check |
+| `/generate?token=...` | WebSocket | Image generation |
+
+WebSocket message flow:
 
 ```
-frontend/          Vite + TypeScript SPA
-  src/
-    main.ts        App entry point
-    types.ts       Shared TypeScript interfaces and constants
-    style.css      Global CSS variables and reset
-  index.html
-  vite.config.ts
-  tsconfig.json
-  package.json
-docs/              Design specs and implementation plans
+Client → Server:  { "image": "base64...", "prompt": "..." }
+Server → Client:  { "type": "progress", "text": "正在生成图片..." }  (multiple)
+Server → Client:  { "type": "done", "success": true, "image": "base64..." }
 ```
+
+Requests are queued — only one Codex process runs at a time.
+
+## Deployment with Cloudflare Tunnel
+
+If you want to expose the AI server via Cloudflare Tunnel:
+
+1. Point a subdomain (e.g. `ai.yourdomain.com`) to `http://localhost:3456`
+2. No extra cloudflared configuration needed — WebSocket is natively supported
+3. In the frontend, enter `https://ai.yourdomain.com?token=yourtoken`
 
 ## Attribution
 
-Bead color data is derived from the
-[Zippland/perler-beads](https://github.com/Zippland/perler-beads) project,
-used under the **Apache License 2.0**.
-
-> Copyright 2024 Zippland
->
-> Licensed under the Apache License, Version 2.0 (the "License");
-> you may not use this file except in compliance with the License.
-> You may obtain a copy of the License at
->
->     http://www.apache.org/licenses/LICENSE-2.0
->
-> Unless required by applicable law or agreed to in writing, software
-> distributed under the License is distributed on an "AS IS" BASIS,
-> WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-> See the License for the specific language governing permissions and
-> limitations under the License.
+Pixelation algorithms and bead color data are derived from [Zippland/perler-beads](https://github.com/Zippland/perler-beads), used under the **Apache License 2.0**.
 
 ## License
 
-This project is released under the [MIT License](./LICENSE).
+[MIT](./LICENSE) — Copyright (c) 2024-2026 Feng Liu
