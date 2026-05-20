@@ -1,7 +1,4 @@
 import './style.css'
 
-// Application entry point — full implementation added in subsequent tasks.
-const app = document.querySelector<HTMLDivElement>('#app')
-if (app) {
-  app.innerHTML = '<p>Pixel Bean — loading…</p>'
-}
+// Application entry point — UI logic wired in subsequent tasks.
+// The HTML structure lives in index.html; this module attaches behaviour.

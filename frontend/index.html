@@ -1,13 +1,119 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pixel Bean — Perler Bead Pattern Generator</title>
-    <link rel="icon" type="image/svg+xml" href="./src/favicon.svg" />
+    <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body>
-    <div id="app"></div>
+
+    <!-- ── Header ──────────────────────────────────────────────────────── -->
+    <header class="header">
+      <h1 class="header__title">Pixel Bean</h1>
+      <div class="header__ai">
+        <input
+          id="aiUrl"
+          type="text"
+          placeholder="AI 服务地址 (含 token)"
+        />
+        <button id="aiTest" class="btn btn--sm">测试连接</button>
+        <span id="aiStatus" class="ai-status"></span>
+      </div>
+    </header>
+
+    <!-- ── Main layout ─────────────────────────────────────────────────── -->
+    <main class="layout">
+
+      <!-- Left panel: upload + preview -->
+      <section class="left-panel">
+
+        <div id="uploadArea" class="upload-area">
+          <input id="fileInput" type="file" accept="image/*" hidden />
+          <p>拖放图片到此处，或点击选择</p>
+        </div>
+
+        <div id="aiActions" class="ai-actions hidden">
+          <button id="aiOptimize" class="btn btn--primary">AI 优化</button>
+          <textarea
+            id="aiPrompt"
+            class="ai-prompt"
+            rows="2"
+            placeholder="可选：描述优化目标…"
+          ></textarea>
+        </div>
+
+        <!-- Hidden processing canvas -->
+        <canvas id="originalCanvas" hidden></canvas>
+
+        <div class="preview-wrap">
+          <canvas id="previewCanvas"></canvas>
+          <div id="tooltip" class="tooltip hidden"></div>
+        </div>
+
+      </section>
+
+      <!-- Right panel: settings + stats + export -->
+      <section class="right-panel">
+
+        <!-- Settings panel -->
+        <div class="panel">
+          <h3>设置</h3>
+
+          <label class="control-row">
+            <span>粒度 (横向格数)</span>
+            <input id="granularity" type="range" min="10" max="200" value="50" />
+            <span id="granularityVal">50</span>
+          </label>
+
+          <label class="control-row">
+            <span>合并阈值</span>
+            <input id="mergeThreshold" type="range" min="0" max="100" value="30" />
+            <span id="mergeVal">30</span>
+          </label>
+
+          <label class="control-row">
+            <span>像素化模式</span>
+            <select id="pixelMode">
+              <option value="dominant">主色卡通</option>
+              <option value="average">均色真实</option>
+            </select>
+          </label>
+
+          <label class="control-row">
+            <span>色号系统</span>
+            <select id="colorSystem">
+              <!-- Populated by JS -->
+            </select>
+          </label>
+        </div>
+
+        <!-- Color stats panel -->
+        <div class="panel" id="statsPanel">
+          <h3>颜色统计 <span id="totalCount" class="total-count"></span></h3>
+          <div id="colorList" class="color-list"></div>
+        </div>
+
+        <!-- Export panel -->
+        <div class="panel export-panel">
+          <button id="exportGrid" class="btn btn--primary" disabled>导出图纸</button>
+          <button id="exportStats" class="btn" disabled>导出统计</button>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- ── Footer ──────────────────────────────────────────────────────── -->
+    <footer class="footer">
+      Based on <a href="https://github.com/Zippland/perler-beads" target="_blank" rel="noopener">Zippland/perler-beads</a> (Apache 2.0)
+    </footer>
+
+    <!-- ── Loading overlay ─────────────────────────────────────────────── -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+      <div class="loading-spinner"></div>
+      <p id="loadingText">处理中…</p>
+    </div>
+
     <script type="module" src="./src/main.ts"></script>
   </body>
 </html>

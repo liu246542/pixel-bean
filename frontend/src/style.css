@@ -52,6 +52,8 @@ body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.5;
   min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
 img, video, canvas {
@@ -70,4 +72,460 @@ a {
 
 a:hover {
   text-decoration: underline;
+}
+
+/* ── Utility ────────────────────────────────────────────────────────────── */
+.hidden {
+  display: none !important;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.header {
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 24px;
+  flex-wrap: wrap;
+}
+
+.header__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--primary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.header__ai {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.header__ai input[type="text"] {
+  flex: 1;
+  min-width: 200px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--bg);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.header__ai input[type="text"]:focus {
+  border-color: var(--primary);
+}
+
+.ai-status {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.ai-status.connected {
+  color: var(--success);
+  font-weight: 500;
+}
+
+.ai-status.error {
+  color: var(--danger);
+}
+
+/* ── Main layout ────────────────────────────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  padding: 24px;
+  flex: 1;
+  align-items: start;
+}
+
+/* ── Left panel ─────────────────────────────────────────────────────────── */
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* ── Upload area ────────────────────────────────────────────────────────── */
+.upload-area {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background-color: var(--surface);
+  transition: border-color 0.2s, background-color 0.2s;
+  padding: 24px;
+  text-align: center;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.upload-area:hover,
+.upload-area.dragover {
+  border-color: var(--primary);
+  background-color: color-mix(in srgb, var(--primary) 6%, var(--surface));
+  color: var(--primary);
+}
+
+.upload-area p {
+  font-size: 0.9375rem;
+  pointer-events: none;
+}
+
+/* ── AI actions ─────────────────────────────────────────────────────────── */
+.ai-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ai-prompt {
+  flex: 1;
+  min-width: 160px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--bg);
+  color: var(--text);
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.ai-prompt:focus {
+  border-color: var(--primary);
+}
+
+/* ── Preview wrap ───────────────────────────────────────────────────────── */
+.preview-wrap {
+  position: relative;
+  line-height: 0;
+  background-color: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.preview-wrap canvas {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ── Tooltip ────────────────────────────────────────────────────────────── */
+.tooltip {
+  position: absolute;
+  background-color: rgba(23, 23, 23, 0.9);
+  color: #fafafa;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  padding: 6px 10px;
+  border-radius: calc(var(--radius) * 0.75);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 10;
+  transform: translate(8px, -50%);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
+}
+
+/* ── Right panel ────────────────────────────────────────────────────────── */
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+/* ── Panel card ─────────────────────────────────────────────────────────── */
+.panel {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+
+.panel h3 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Control row (settings) ─────────────────────────────────────────────── */
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 0.875rem;
+  cursor: default;
+}
+
+.control-row:last-child {
+  margin-bottom: 0;
+}
+
+.control-row span:first-child {
+  flex: 0 0 130px;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+}
+
+.control-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.control-row select {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) * 0.75);
+  background-color: var(--bg);
+  color: var(--text);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.control-row select:focus {
+  border-color: var(--primary);
+}
+
+.control-row span:last-child {
+  flex: 0 0 32px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+}
+
+/* ── Total count badge ──────────────────────────────────────────────────── */
+.total-count {
+  font-size: 0.75rem;
+  font-weight: 400;
+  background-color: var(--primary);
+  color: #fff;
+  padding: 1px 7px;
+  border-radius: 999px;
+  margin-left: 4px;
+}
+
+/* ── Color list ─────────────────────────────────────────────────────────── */
+.color-list {
+  max-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  /* Custom scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.color-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.color-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.color-list::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 3px;
+}
+
+/* ── Color item ─────────────────────────────────────────────────────────── */
+.color-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: calc(var(--radius) * 0.5);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  transition: background-color 0.15s;
+  user-select: none;
+}
+
+.color-item:hover {
+  background-color: var(--bg);
+}
+
+.color-item.excluded {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+/* ── Color swatch ───────────────────────────────────────────────────────── */
+.color-swatch {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.color-item .color-key {
+  flex: 1;
+  color: var(--text);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.color-item .color-count {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Export panel ───────────────────────────────────────────────────────── */
+.export-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--surface);
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s, border-color 0.15s, opacity 0.15s;
+  text-align: center;
+}
+
+.btn:hover:not(:disabled) {
+  background-color: var(--bg);
+  border-color: var(--text-secondary);
+}
+
+.btn:active:not(:disabled) {
+  opacity: 0.8;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+/* Smaller header button */
+.btn--sm {
+  padding: 5px 12px;
+  font-size: 0.8125rem;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+.footer {
+  background-color: var(--surface);
+  border-top: 1px solid var(--border);
+  text-align: center;
+  padding: 12px 24px;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  margin-top: auto;
+}
+
+/* ── Loading overlay ────────────────────────────────────────────────────── */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 1000;
+  color: #fff;
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+/* ── Loading spinner ────────────────────────────────────────────────────── */
+.loading-spinner {
+  width: 44px;
+  height: 44px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .layout {
+    grid-template-columns: 1fr;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .header {
+    padding: 10px 16px;
+  }
+
+  .header__ai {
+    width: 100%;
+  }
+
+  .header__ai input[type="text"] {
+    min-width: 0;
+  }
+
+  .footer {
+    padding: 10px 16px;
+  }
+
+  .control-row span:first-child {
+    flex: 0 0 110px;
+  }
 }
