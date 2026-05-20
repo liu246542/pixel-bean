@@ -107,8 +107,8 @@ wss.on('connection', (ws: WebSocket, req: http.IncomingMessage) => {
     }
 
     const { image, prompt } = parsed;
-    if (!image || !prompt) {
-      ws.send(JSON.stringify({ type: 'error', error: 'Missing image or prompt' }));
+    if (!prompt) {
+      ws.send(JSON.stringify({ type: 'error', error: 'Missing prompt' }));
       ws.close();
       return;
     }
@@ -133,15 +133,21 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
   const outputPath = path.join(tmpDir, `${uuid}-output.png`);
 
   try {
-    send(ws, { type: 'progress', text: '准备图片...' });
-
-    const base64Data = image.includes(',') ? image.split(',')[1] : image;
-    fs.writeFileSync(inputPath, Buffer.from(base64Data, 'base64'));
-
+    const hasImage = !!image;
     const codexHome = process.env.CODEX_HOME || path.join(process.env.HOME || '', '.codex');
     const genDir = path.join(codexHome, 'generated_images');
 
-    const codexPrompt = `${prompt}。输入图片在 ${inputPath}，请基于这张图片生成新图，保存到 ${outputPath}`;
+    let codexPrompt: string;
+
+    if (hasImage) {
+      send(ws, { type: 'progress', text: '准备图片...' });
+      const base64Data = image.includes(',') ? image.split(',')[1] : image;
+      fs.writeFileSync(inputPath, Buffer.from(base64Data, 'base64'));
+      codexPrompt = `${prompt}。输入图片在 ${inputPath}，请基于这张图片生成新图，保存到 ${outputPath}`;
+    } else {
+      send(ws, { type: 'progress', text: '准备生成图片...' });
+      codexPrompt = `${prompt}。请生成一张图片，保存到 ${outputPath}`;
+    }
 
     send(ws, { type: 'progress', text: '正在调用 Codex 生成图片...' });
 

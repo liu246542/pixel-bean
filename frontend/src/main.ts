@@ -20,6 +20,7 @@ import {
   healthCheck,
   generateImage,
   DEFAULT_PROMPT,
+  DEFAULT_GENERATE_PROMPT,
 } from './ai-client';
 import type { AIServiceConfig } from './ai-client';
 import { showCropModal } from './crop';
@@ -50,6 +51,7 @@ const $cropBtn = document.getElementById('cropBtn') as HTMLButtonElement;
 
 const $aiActions = document.getElementById('aiActions') as HTMLDivElement;
 const $aiOptimize = document.getElementById('aiOptimize') as HTMLButtonElement;
+const $aiGenerate = document.getElementById('aiGenerate') as HTMLButtonElement;
 const $aiPrompt = document.getElementById('aiPrompt') as HTMLTextAreaElement;
 
 const $originalCanvas = document.getElementById('originalCanvas') as HTMLCanvasElement;
@@ -405,10 +407,8 @@ function bindAiEvents(): void {
       $aiStatus.className = 'ai-status connected';
       aiConfig = config;
       saveConfig(config);
-      // Show AI actions when image is loaded
-      if (imageSrc) {
-        $aiActions.classList.remove('hidden');
-      }
+      // Show AI actions (generate works without image, optimize needs image)
+      $aiActions.classList.remove('hidden');
     } else {
       $aiStatus.textContent = 'Connection failed';
       $aiStatus.className = 'ai-status error';
@@ -441,6 +441,33 @@ function bindAiEvents(): void {
     }
 
     // Hide loading overlay
+    $loadingOverlay.classList.add('hidden');
+  });
+
+  $aiGenerate.addEventListener('click', async () => {
+    if (!aiConfig) return;
+    const userPrompt = $aiPrompt.value.trim();
+    if (!userPrompt) {
+      alert('请输入图案描述（如：一只可爱的猫咪）');
+      return;
+    }
+
+    $loadingOverlay.classList.remove('hidden');
+    $loadingText.textContent = 'AI 生成中...';
+
+    const prompt = `${DEFAULT_GENERATE_PROMPT}, ${userPrompt}`;
+    const result = await generateImage(aiConfig, '', prompt, (text) => {
+      $loadingText.textContent = text;
+    });
+
+    if (result.success && result.image) {
+      imageSrc = result.image.startsWith('data:') ? result.image : `data:image/png;base64,${result.image}`;
+      originalImageSrc = imageSrc;
+      processImage();
+    } else {
+      alert(result.error ?? 'AI 生成失败');
+    }
+
     $loadingOverlay.classList.add('hidden');
   });
 }

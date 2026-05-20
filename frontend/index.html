@@ -39,11 +39,12 @@
 
         <div id="aiActions" class="ai-actions hidden">
           <button id="aiOptimize" class="btn btn--primary">AI 优化</button>
+          <button id="aiGenerate" class="btn">AI 生成</button>
           <textarea
             id="aiPrompt"
             class="ai-prompt"
             rows="2"
-            placeholder="可选：描述优化目标…"
+            placeholder="描述你想要的图案（如：一只可爱的猫咪）"
           ></textarea>
         </div>
 
@@ -66,14 +67,14 @@
 
           <label class="control-row">
             <span>粒度 (横向格数)</span>
-            <input id="granularity" type="range" min="10" max="200" value="50" />
-            <span id="granularityVal">50</span>
+            <input id="granularity" type="range" min="10" max="200" value="30" />
+            <span id="granularityVal">30</span>
           </label>
 
           <label class="control-row">
             <span>合并阈值</span>
-            <input id="mergeThreshold" type="range" min="0" max="100" value="30" />
-            <span id="mergeVal">30</span>
+            <input id="mergeThreshold" type="range" min="0" max="100" value="40" />
+            <span id="mergeVal">40</span>
           </label>
 
           <label class="control-row">
