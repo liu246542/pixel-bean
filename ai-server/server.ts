@@ -1,11 +1,25 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync, execSync } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Load .env file if present (simple key=value parsing, no dependency needed)
+const envPath = path.join(__dirname, '.env');
+if (fs.existsSync(envPath)) {
+  for (const line of fs.readFileSync(envPath, 'utf-8').split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq === -1) continue;
+    const key = trimmed.slice(0, eq).trim();
+    const val = trimmed.slice(eq + 1).trim();
+    if (!process.env[key]) process.env[key] = val;
+  }
+}
 
 const PORT = parseInt(process.env.PORT ?? '3456', 10);
 const TOKEN = process.env.TOKEN ?? 'changeme';
