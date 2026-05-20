@@ -79,6 +79,9 @@ const server = http.createServer((req, res) => {
 
 const wss = new WebSocketServer({ server, path: '/generate' });
 
+// Simple queue: only one codex process at a time
+let queue: Promise<void> = Promise.resolve();
+
 wss.on('connection', (ws: WebSocket, req: http.IncomingMessage) => {
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
 
@@ -110,7 +113,11 @@ wss.on('connection', (ws: WebSocket, req: http.IncomingMessage) => {
       return;
     }
 
-    handleGenerate(ws, image, prompt);
+    queue = queue.then(() => {
+      send(ws, { type: 'progress', text: '开始处理...' });
+      return handleGenerate(ws, image, prompt);
+    });
+    send(ws, { type: 'progress', text: '排队中，请稍候...' });
   });
 });
 
