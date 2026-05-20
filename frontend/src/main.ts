@@ -91,6 +91,7 @@ let originalImageSrc: string | null = null;
 let grid: MappedPixel[][] = [];
 const excludedHexes = new Set<string>();
 let aiConfig: AIServiceConfig | null = null;
+let aiMode: 'optimize' | 'generate' | null = null;
 let editMode = false;
 let editColor: { rgb: { r: number; g: number; b: number }; hex: string } | null = null;
 
@@ -498,15 +499,30 @@ function bindAiEvents(): void {
     }
   });
 
+  // AI 优化：第一次点击 → 切换到优化模式并填入默认 prompt；第二次点击 → 执行
   $aiOptimize.addEventListener('click', async () => {
-    if (!aiConfig || !imageSrc) return;
+    if (!aiConfig) return;
+
+    if (aiMode !== 'optimize') {
+      aiMode = 'optimize';
+      $aiPrompt.value = DEFAULT_PROMPT;
+      $aiPrompt.placeholder = '修改优化提示词（可自定义风格、比例等）';
+      $aiPromptWrap.classList.remove('hidden');
+      $aiPrompt.focus();
+      $aiOptimize.textContent = '执行优化';
+      $aiGenerate.textContent = 'AI 生成';
+      return;
+    }
+
+    if (!imageSrc) {
+      alert('请先上传一张图片');
+      return;
+    }
 
     $loadingOverlay.classList.remove('hidden');
     $loadingText.textContent = 'AI 优化中...';
 
     const prompt = $aiPrompt.value.trim() || DEFAULT_PROMPT;
-
-    // Extract base64 from data URL
     const base64 = imageSrc.includes(',') ? imageSrc.split(',')[1] : imageSrc;
 
     const result = await generateImage(aiConfig, base64, prompt, (text) => {
@@ -517,19 +533,29 @@ function bindAiEvents(): void {
       imageSrc = result.image.startsWith('data:') ? result.image : `data:image/png;base64,${result.image}`;
       processImage();
     } else {
-      alert(result.error ?? 'AI generation failed');
+      alert(result.error ?? 'AI 优化失败');
     }
 
-    // Hide loading overlay
     $loadingOverlay.classList.add('hidden');
   });
 
+  // AI 生成：第一次点击 → 切换到生成模式并清空 prompt；第二次点击 → 执行
   $aiGenerate.addEventListener('click', async () => {
     if (!aiConfig) return;
+
+    if (aiMode !== 'generate') {
+      aiMode = 'generate';
+      $aiPrompt.value = '';
+      $aiPrompt.placeholder = '输入要生成的内容（如：一只可爱的猫咪、一朵向日葵）';
+      $aiPromptWrap.classList.remove('hidden');
+      $aiPrompt.focus();
+      $aiGenerate.textContent = '执行生成';
+      $aiOptimize.textContent = 'AI 优化';
+      return;
+    }
+
     const userPrompt = $aiPrompt.value.trim();
     if (!userPrompt) {
-      $aiPrompt.value = '';
-      $aiPrompt.placeholder = '请输入要生成的内容（如：一只可爱的猫咪、一朵向日葵）';
       $aiPrompt.focus();
       return;
     }
