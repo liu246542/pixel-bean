@@ -22,6 +22,7 @@ import {
   DEFAULT_PROMPT,
 } from './ai-client';
 import type { AIServiceConfig } from './ai-client';
+import { showCropModal } from './crop';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,9 @@ const $aiStatus = document.getElementById('aiStatus') as HTMLSpanElement;
 
 const $uploadArea = document.getElementById('uploadArea') as HTMLDivElement;
 const $fileInput = document.getElementById('fileInput') as HTMLInputElement;
+
+const $imageActions = document.getElementById('imageActions') as HTMLDivElement;
+const $cropBtn = document.getElementById('cropBtn') as HTMLButtonElement;
 
 const $aiActions = document.getElementById('aiActions') as HTMLDivElement;
 const $aiOptimize = document.getElementById('aiOptimize') as HTMLButtonElement;
@@ -100,6 +104,7 @@ function init(): void {
 
   // Bind events
   bindUploadEvents();
+  bindCropEvents();
   bindSettingsEvents();
   bindPreviewEvents();
   bindExportEvents();
@@ -176,9 +181,10 @@ function processImage(): void {
     drawPreview($previewCanvas, grid, currentSystem);
     updateColorStats();
 
-    // Enable export buttons
+    // Enable export buttons and show image actions
     $exportGrid.disabled = false;
     $exportStats.disabled = false;
+    $imageActions.classList.remove('hidden');
 
     // Show AI actions if connected
     if (aiConfig) $aiActions.classList.remove('hidden');
@@ -337,6 +343,19 @@ function bindPreviewEvents(): void {
 
   $previewCanvas.addEventListener('mouseleave', () => {
     $tooltip.classList.add('hidden');
+  });
+}
+
+// ── Crop ────────────────────────────────────────────────────────────────────
+
+function bindCropEvents(): void {
+  $cropBtn.addEventListener('click', async () => {
+    if (!imageSrc) return;
+    const result = await showCropModal(imageSrc);
+    if (result) {
+      imageSrc = result;
+      processImage();
+    }
   });
 }
 
