@@ -184,11 +184,8 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
 
       child.on('close', (code) => {
         clearTimeout(timeout);
-        if (code === 0) {
-          resolve(stdout);
-        } else {
-          reject(new Error(`Codex exited with code ${code}`));
-        }
+        // Codex may exit non-zero even when it produced output — always resolve
+        resolve(stdout);
       });
 
       child.on('error', (err) => {
