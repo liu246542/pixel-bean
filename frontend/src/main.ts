@@ -78,6 +78,7 @@ const $loadingText = document.getElementById('loadingText') as HTMLParagraphElem
 const fullPalette: PaletteColor[] = buildFullPalette();
 let currentSystem: ColorSystem = 'MARD';
 let imageSrc: string | null = null;
+let originalImageSrc: string | null = null;
 let grid: MappedPixel[][] = [];
 const excludedHexes = new Set<string>();
 let aiConfig: AIServiceConfig | null = null;
@@ -142,6 +143,7 @@ function loadImageFile(file: File): void {
   const reader = new FileReader();
   reader.onload = () => {
     imageSrc = reader.result as string;
+    originalImageSrc = imageSrc;
     processImage();
   };
   reader.readAsDataURL(file);
@@ -350,8 +352,8 @@ function bindPreviewEvents(): void {
 
 function bindCropEvents(): void {
   $cropBtn.addEventListener('click', async () => {
-    if (!imageSrc) return;
-    const result = await showCropModal(imageSrc);
+    if (!originalImageSrc) return;
+    const result = await showCropModal(originalImageSrc);
     if (result) {
       imageSrc = result;
       processImage();
