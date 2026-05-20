@@ -1,9 +1,10 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { WebSocketServer, WebSocket } from 'ws';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -24,7 +25,6 @@ if (fs.existsSync(envPath)) {
 const PORT = parseInt(process.env.PORT ?? '3456', 10);
 const TOKEN = process.env.TOKEN ?? 'changeme';
 
-// Ensure .tmp directory exists
 const tmpDir = path.join(__dirname, '.tmp');
 if (!fs.existsSync(tmpDir)) {
   fs.mkdirSync(tmpDir, { recursive: true });
@@ -45,37 +45,26 @@ function sendJson(res: http.ServerResponse, statusCode: number, body: unknown): 
   res.end(payload);
 }
 
-function validateToken(req: http.IncomingMessage): boolean {
-  const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
+function validateTokenFromUrl(url: URL): boolean {
   return url.searchParams.get('token') === TOKEN;
 }
 
-function readBody(req: http.IncomingMessage): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    req.on('data', (chunk: Buffer) => chunks.push(chunk));
-    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
-    req.on('error', reject);
-  });
-}
+// ── HTTP server (health check only) ────────────────────────────────────────
 
-const server = http.createServer(async (req, res) => {
+const server = http.createServer((req, res) => {
   setCorsHeaders(res);
 
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
-  const pathname = url.pathname;
   const method = req.method ?? 'GET';
 
-  // OPTIONS preflight
   if (method === 'OPTIONS') {
     res.writeHead(204);
     res.end();
     return;
   }
 
-  // GET /health
-  if (method === 'GET' && pathname === '/health') {
-    if (!validateToken(req)) {
+  if (method === 'GET' && url.pathname === '/health') {
+    if (!validateTokenFromUrl(url)) {
       sendJson(res, 401, { error: 'Unauthorized' });
       return;
     }
@@ -83,99 +72,150 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // POST /generate
-  if (method === 'POST' && pathname === '/generate') {
-    if (!validateToken(req)) {
-      sendJson(res, 401, { error: 'Unauthorized' });
-      return;
-    }
+  sendJson(res, 404, { error: 'Not found. Image generation uses WebSocket on /generate' });
+});
 
-    let body: { image?: string; prompt?: string };
-    try {
-      const raw = await readBody(req);
-      body = JSON.parse(raw);
-    } catch {
-      sendJson(res, 400, { error: 'Invalid JSON body' });
-      return;
-    }
+// ── WebSocket server (image generation) ────────────────────────────────────
 
-    const { image, prompt } = body;
-    if (!image || !prompt) {
-      sendJson(res, 400, { error: 'Missing required fields: image and prompt' });
-      return;
-    }
+const wss = new WebSocketServer({ server, path: '/generate' });
 
-    const uuid = crypto.randomUUID();
-    const inputPath = path.join(tmpDir, `${uuid}-input.png`);
-    const outputPath = path.join(tmpDir, `${uuid}-output.png`);
+wss.on('connection', (ws: WebSocket, req: http.IncomingMessage) => {
+  const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
 
-    try {
-      // Extract base64 data (strip data URL prefix if present)
-      let base64Data = image;
-      if (image.includes(',')) {
-        base64Data = image.split(',')[1];
-      }
-
-      // Write input file
-      fs.writeFileSync(inputPath, Buffer.from(base64Data, 'base64'));
-
-      // Record newest generated image before calling codex
-      const codexHome = process.env.CODEX_HOME || path.join(process.env.HOME || '', '.codex');
-      const genDir = path.join(codexHome, 'generated_images');
-      const beforeTs = Date.now();
-
-      // Call codex — pass prompt via env variable to avoid shell injection
-      const codexPrompt = `${prompt}。输入图片在 ${inputPath}，请基于这张图片生成新图，保存到 ${outputPath}`;
-      execSync('echo "$CODEX_PROMPT" | codex exec -', {
-        timeout: 600_000,
-        stdio: ['pipe', 'pipe', 'pipe'],
-        cwd: tmpDir,
-        shell: '/bin/bash',
-        env: { ...process.env, CODEX_PROMPT: codexPrompt },
-      });
-
-      // Find the output image: check explicit path first, then scan codex generated_images
-      let outputBuffer: Buffer;
-      if (fs.existsSync(outputPath)) {
-        outputBuffer = fs.readFileSync(outputPath);
-      } else {
-        // Codex saves to ~/.codex/generated_images/<session>/<file>.png
-        // Find the newest image created after our call
-        const findCmd = `find "${genDir}" -name '*.png' -newer "${inputPath}" -printf '%T@ %p\\n' 2>/dev/null | sort -nr | head -1 | cut -d' ' -f2-`;
-        const newest = execSync(findCmd, { encoding: 'utf-8' }).trim();
-        if (!newest || !fs.existsSync(newest)) {
-          throw new Error('Codex did not produce an output image');
-        }
-        outputBuffer = fs.readFileSync(newest);
-      }
-      const outputBase64 = outputBuffer.toString('base64');
-
-      sendJson(res, 200, {
-        success: true,
-        image: outputBase64,
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      sendJson(res, 500, { error: 'Generation failed', details: message });
-    } finally {
-      // Clean up temp files
-      if (fs.existsSync(inputPath)) {
-        try { fs.unlinkSync(inputPath); } catch { /* ignore */ }
-      }
-      if (fs.existsSync(outputPath)) {
-        try { fs.unlinkSync(outputPath); } catch { /* ignore */ }
-      }
-    }
+  if (!validateTokenFromUrl(url)) {
+    ws.send(JSON.stringify({ type: 'error', error: 'Unauthorized' }));
+    ws.close();
     return;
   }
 
-  // 404 for everything else
-  sendJson(res, 404, { error: 'Not found' });
+  let received = false;
+
+  ws.on('message', (data: Buffer) => {
+    if (received) return;
+    received = true;
+
+    let parsed: { image?: string; prompt?: string };
+    try {
+      parsed = JSON.parse(data.toString());
+    } catch {
+      ws.send(JSON.stringify({ type: 'error', error: 'Invalid JSON' }));
+      ws.close();
+      return;
+    }
+
+    const { image, prompt } = parsed;
+    if (!image || !prompt) {
+      ws.send(JSON.stringify({ type: 'error', error: 'Missing image or prompt' }));
+      ws.close();
+      return;
+    }
+
+    handleGenerate(ws, image, prompt);
+  });
 });
 
+function send(ws: WebSocket, msg: object): void {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(msg));
+  }
+}
+
+async function handleGenerate(ws: WebSocket, image: string, prompt: string): Promise<void> {
+  const uuid = crypto.randomUUID();
+  const inputPath = path.join(tmpDir, `${uuid}-input.png`);
+  const outputPath = path.join(tmpDir, `${uuid}-output.png`);
+
+  try {
+    send(ws, { type: 'progress', text: '准备图片...' });
+
+    const base64Data = image.includes(',') ? image.split(',')[1] : image;
+    fs.writeFileSync(inputPath, Buffer.from(base64Data, 'base64'));
+
+    const codexHome = process.env.CODEX_HOME || path.join(process.env.HOME || '', '.codex');
+    const genDir = path.join(codexHome, 'generated_images');
+
+    const codexPrompt = `${prompt}。输入图片在 ${inputPath}，请基于这张图片生成新图，保存到 ${outputPath}`;
+
+    send(ws, { type: 'progress', text: '正在调用 Codex 生成图片...' });
+
+    // Spawn codex as child process to stream output
+    const result = await new Promise<string>((resolve, reject) => {
+      const child = spawn('/bin/bash', ['-c', 'echo "$CODEX_PROMPT" | codex exec -'], {
+        cwd: tmpDir,
+        env: { ...process.env, CODEX_PROMPT: codexPrompt },
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      const timeout = setTimeout(() => {
+        child.kill('SIGTERM');
+        reject(new Error('Codex timed out after 10 minutes'));
+      }, 600_000);
+
+      let stdout = '';
+
+      child.stdout.on('data', (chunk: Buffer) => {
+        const text = chunk.toString();
+        stdout += text;
+        // Forward meaningful lines to frontend
+        for (const line of text.split('\n')) {
+          const trimmed = line.trim();
+          if (trimmed && trimmed.length > 2) {
+            send(ws, { type: 'progress', text: trimmed.slice(0, 200) });
+          }
+        }
+      });
+
+      child.stderr.on('data', (chunk: Buffer) => {
+        stdout += chunk.toString();
+      });
+
+      child.on('close', (code) => {
+        clearTimeout(timeout);
+        if (code === 0) {
+          resolve(stdout);
+        } else {
+          reject(new Error(`Codex exited with code ${code}`));
+        }
+      });
+
+      child.on('error', (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+    });
+
+    send(ws, { type: 'progress', text: '正在读取生成的图片...' });
+
+    // Find the output image
+    let outputBuffer: Buffer;
+    if (fs.existsSync(outputPath)) {
+      outputBuffer = fs.readFileSync(outputPath);
+    } else {
+      const findCmd = `find "${genDir}" -name '*.png' -newer "${inputPath}" -printf '%T@ %p\\n' 2>/dev/null | sort -nr | head -1 | cut -d' ' -f2-`;
+      const newest = execSync(findCmd, { encoding: 'utf-8' }).trim();
+      if (!newest || !fs.existsSync(newest)) {
+        throw new Error('Codex did not produce an output image');
+      }
+      outputBuffer = fs.readFileSync(newest);
+    }
+
+    const outputBase64 = outputBuffer.toString('base64');
+    send(ws, { type: 'done', success: true, image: outputBase64 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    send(ws, { type: 'error', error: message });
+  } finally {
+    try { if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath); } catch {}
+    try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch {}
+    ws.close();
+  }
+}
+
+// ── Start ──────────────────────────────────────────────────────────────────
+
 server.listen(PORT, () => {
-  const url = `http://localhost:${PORT}`;
-  console.log(`AI Server running at ${url}`);
+  console.log(`AI Server running at http://localhost:${PORT}`);
+  console.log(`  Health: GET /health?token=...`);
+  console.log(`  Generate: WebSocket /generate?token=...`);
   console.log(`Token: ${TOKEN}`);
-  console.log(`Test command: curl "${url}/health?token=${TOKEN}"`);
 });

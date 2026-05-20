@@ -408,8 +408,8 @@ function bindAiEvents(): void {
     // Extract base64 from data URL
     const base64 = imageSrc.includes(',') ? imageSrc.split(',')[1] : imageSrc;
 
-    const result = await generateImage(aiConfig, base64, prompt, (pct) => {
-      $loadingText.textContent = pct < 100 ? `AI processing... ${pct}%` : 'Finalizing...';
+    const result = await generateImage(aiConfig, base64, prompt, (text) => {
+      $loadingText.textContent = text;
     });
 
     if (result.success && result.image) {
