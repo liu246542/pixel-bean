@@ -1,4 +1,5 @@
 import type { MappedPixel, ColorSystem } from './types';
+import { TRANSPARENT_KEY } from './types';
 import { getDisplayKey, getContrastColor } from './palette';
 
 // ── Internal helpers ─────────────────────────────────────────────────────────
@@ -62,7 +63,8 @@ export function drawPreview(
       const y = r * cellSize;
 
       // ── Fill ────────────────────────────────────────────────────────────────
-      if (cell.isExternal) {
+      const isBlank = cell.isExternal || cell.paletteId === TRANSPARENT_KEY;
+      if (isBlank) {
         ctx.fillStyle = '#F0F0F0';
       } else {
         const { r: cr, g: cg, b: cb } = cell.color;
@@ -76,7 +78,7 @@ export function drawPreview(
       ctx.strokeRect(x, y, cellSize, cellSize);
 
       // ── Label ──────────────────────────────────────────────────────────────
-      if (showLabel && !cell.isExternal) {
+      if (showLabel && !isBlank) {
         const { r: cr, g: cg, b: cb } = cell.color;
         const hex = rgbToHex(cr, cg, cb);
         const label = getDisplayKey(hex, system);

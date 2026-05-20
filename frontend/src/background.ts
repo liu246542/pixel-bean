@@ -29,6 +29,13 @@ export function markBackground(grid: MappedPixel[][]): void {
   const cols = grid[0].length;
   if (cols === 0) return;
 
+  // Clear any previous external flags before re-computing
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      grid[r][c].isExternal = false;
+    }
+  }
+
   const visited: boolean[][] = Array.from({ length: rows }, () =>
     new Array<boolean>(cols).fill(false)
   );

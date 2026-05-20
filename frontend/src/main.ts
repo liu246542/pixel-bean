@@ -160,7 +160,7 @@ function processImage(): void {
 
     // Calculate grid dimensions
     const cols = parseInt($granularity.value, 10);
-    const rows = Math.round(cols * (img.height / img.width));
+    const rows = Math.max(1, Math.round(cols * (img.height / img.width)));
 
     // Build active palette: filter out excluded colors, convert to current system
     const activePalette = getActivePalette();
@@ -179,6 +179,9 @@ function processImage(): void {
     // Enable export buttons
     $exportGrid.disabled = false;
     $exportStats.disabled = false;
+
+    // Show AI actions if connected
+    if (aiConfig) $aiActions.classList.remove('hidden');
   };
   img.src = imageSrc;
 }
@@ -223,6 +226,13 @@ function updateColorStats(): void {
 
   // Render color list
   $colorList.innerHTML = '';
+
+  // Also show excluded colors (with count 0) so user can click to restore them
+  for (const exHex of excludedHexes) {
+    if (!counts.has(exHex)) {
+      sorted.push([exHex, 0]);
+    }
+  }
 
   for (const [hex, count] of sorted) {
     const item = document.createElement('div');
@@ -403,7 +413,7 @@ function bindAiEvents(): void {
     });
 
     if (result.success && result.image) {
-      imageSrc = `data:image/png;base64,${result.image}`;
+      imageSrc = result.image.startsWith('data:') ? result.image : `data:image/png;base64,${result.image}`;
       processImage();
     } else {
       alert(result.error ?? 'AI generation failed');

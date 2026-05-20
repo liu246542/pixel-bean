@@ -132,7 +132,7 @@ export function exportStats(
   const HEADER_H = 48;
   const ROW_H = 32;
   const FOOTER_H = 40;
-  const height = HEADER_H + sorted.length * ROW_H + FOOTER_H;
+  const height = HEADER_H + ROW_H + sorted.length * ROW_H + FOOTER_H;
 
   const canvas = document.createElement('canvas');
   canvas.width = WIDTH;

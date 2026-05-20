@@ -63,7 +63,7 @@ export function mergeColors(grid: MappedPixel[][], threshold: number): void {
       const targetRgb = hexToRgb(targetHex);
       if (!targetRgb) continue;
 
-      row[col] = { ...pixel, color: targetRgb };
+      row[col] = { ...pixel, paletteId: targetHex, color: targetRgb };
     }
   }
 }

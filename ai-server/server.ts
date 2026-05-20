@@ -1,7 +1,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
@@ -105,9 +105,12 @@ const server = http.createServer(async (req, res) => {
       // Write input file
       fs.writeFileSync(inputPath, Buffer.from(base64Data, 'base64'));
 
-      // Call codex
-      const codexCmd = `codex exec "${prompt}。输入图片在 ${inputPath}，请基于这张图片生成新图，保存到 ${outputPath}" --sandbox workspace-write`;
-      execSync(codexCmd, { timeout: 120_000, stdio: 'pipe' });
+      // Call codex — use execFileSync with args array to avoid shell injection
+      const codexPrompt = `${prompt}。输入图片在 ${inputPath}，请基于这张图片生成新图，保存到 ${outputPath}`;
+      execFileSync('codex', ['exec', codexPrompt, '--sandbox', 'workspace-write'], {
+        timeout: 120_000,
+        stdio: 'pipe',
+      });
 
       // Read output file
       const outputBuffer = fs.readFileSync(outputPath);
@@ -115,7 +118,7 @@ const server = http.createServer(async (req, res) => {
 
       sendJson(res, 200, {
         success: true,
-        image: `data:image/png;base64,${outputBase64}`,
+        image: outputBase64,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

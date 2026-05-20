@@ -1,4 +1,4 @@
-import { RgbColor, PaletteColor, MappedPixel, PixelationMode, TRANSPARENT_PIXEL } from './types';
+import { RgbColor, PaletteColor, MappedPixel, PixelationMode, TRANSPARENT_KEY } from './types';
 import { findClosestColor } from './palette';
 
 /**
@@ -125,7 +125,7 @@ export function pixelate(
       );
 
       if (repColor === null) {
-        rowPixels.push(TRANSPARENT_PIXEL);
+        rowPixels.push({ paletteId: TRANSPARENT_KEY, color: { r: 0, g: 0, b: 0 } });
       } else {
         const matched = findClosestColor(repColor, palette, fallback);
         rowPixels.push({ paletteId: matched.id, color: matched.color });

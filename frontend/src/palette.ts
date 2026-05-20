@@ -1,4 +1,5 @@
 import type { RgbColor, PaletteColor, ColorSystem, MappedPixel } from './types';
+import { TRANSPARENT_KEY } from './types';
 import colorData from './color-data.json';
 
 // Type alias for the raw JSON structure
@@ -188,9 +189,9 @@ export function remapExcludedColors(
 
   for (const row of grid) {
     for (const pixel of row) {
+      if (pixel.isExternal || pixel.paletteId === TRANSPARENT_KEY) continue;
+
       // Determine the hex for this pixel's current palette entry
-      // PaletteColor.name stores the hex; we need to reverse-look-up by paletteId
-      // The pixel carries its current RGB, so we search by RGB match in excludedHexes.
       // However, excludedHexes is a set of hex strings, and we need to check
       // whether this pixel's color belongs to one of them.  We look up the hex
       // from the raw color data via the pixel's RGB.
