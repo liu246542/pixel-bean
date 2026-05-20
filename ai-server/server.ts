@@ -113,7 +113,7 @@ const server = http.createServer(async (req, res) => {
       // Call codex — pass prompt via env variable to avoid shell injection
       const codexPrompt = `${prompt}。输入图片在 ${inputPath}，请基于这张图片生成新图，保存到 ${outputPath}`;
       execSync('echo "$CODEX_PROMPT" | codex exec -', {
-        timeout: 300_000,
+        timeout: 600_000,
         stdio: ['pipe', 'pipe', 'pipe'],
         cwd: tmpDir,
         shell: '/bin/bash',
