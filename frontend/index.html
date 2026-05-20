@@ -22,109 +22,94 @@
       </div>
     </header>
 
-    <!-- ── Main layout ─────────────────────────────────────────────────── -->
+    <!-- ── Main layout: top controls → full-width previews ─────────────── -->
     <main class="layout">
 
-      <!-- Left panel: upload + preview -->
-      <section class="left-panel">
+      <!-- Top bar: upload + settings + actions (single row on desktop) -->
+      <section class="top-bar">
+        <div class="top-bar__left">
+          <div id="uploadArea" class="upload-area-compact">
+            <input id="fileInput" type="file" accept="image/*" hidden />
+            <span>上传图片</span>
+          </div>
 
-        <div id="uploadArea" class="upload-area">
-          <input id="fileInput" type="file" accept="image/*" hidden />
-          <p>拖放图片到此处，或点击选择</p>
-        </div>
-
-        <div class="action-bar">
-          <div id="imageActions" class="image-actions hidden">
+          <div id="imageActions" class="action-group hidden">
             <button id="cropBtn" class="btn btn--sm">裁剪</button>
           </div>
-          <div id="aiActions" class="ai-actions hidden">
+          <div id="aiActions" class="action-group hidden">
             <button id="aiOptimize" class="btn btn--sm btn--primary">AI 优化</button>
             <button id="aiGenerate" class="btn btn--sm">AI 生成</button>
           </div>
         </div>
 
-        <div id="aiPromptWrap" class="ai-prompt-wrap hidden">
-          <textarea
-            id="aiPrompt"
-            class="ai-prompt"
-            rows="2"
-            placeholder="描述你想要的图案（如：一只可爱的猫咪）"
-          ></textarea>
-        </div>
-
-        <!-- Hidden processing canvas -->
-        <canvas id="originalCanvas" hidden></canvas>
-
-        <div class="dual-preview">
-          <div class="preview-pane" id="originalPane">
-            <h4>原图</h4>
-            <img id="originalPreview" class="preview-img hidden" />
-          </div>
-          <div class="preview-pane">
-            <h4>拼豆图案 <button id="editToggle" class="btn btn--sm hidden">编辑</button></h4>
-            <div class="preview-wrap">
-              <canvas id="previewCanvas"></canvas>
-              <div id="tooltip" class="tooltip hidden"></div>
-            </div>
-          </div>
-        </div>
-
-        <div id="editToolbar" class="edit-toolbar hidden">
-          <span>选择颜色：</span>
-          <div id="editPalette" class="edit-palette"></div>
-          <button id="editDone" class="btn btn--sm btn--primary">完成编辑</button>
-        </div>
-
-      </section>
-
-      <!-- Right panel: settings + stats + export -->
-      <section class="right-panel">
-
-        <!-- Settings panel -->
-        <div class="panel">
-          <h3>设置</h3>
-
-          <label class="control-row">
-            <span>粒度 (横向格数)</span>
+        <div class="top-bar__controls">
+          <label class="inline-control">
+            <span>粒度</span>
             <input id="granularity" type="range" min="10" max="200" value="30" />
             <span id="granularityVal">30</span>
           </label>
-
-          <label class="control-row">
-            <span>合并阈值</span>
+          <label class="inline-control">
+            <span>合并</span>
             <input id="mergeThreshold" type="range" min="0" max="100" value="40" />
             <span id="mergeVal">40</span>
           </label>
-
-          <label class="control-row">
-            <span>像素化模式</span>
-            <select id="pixelMode">
-              <option value="dominant">主色卡通</option>
-              <option value="average">均色真实</option>
-            </select>
-          </label>
-
-          <label class="control-row">
-            <span>色号系统</span>
-            <select id="colorSystem">
-              <!-- Populated by JS -->
-            </select>
-          </label>
+          <select id="pixelMode" class="compact-select">
+            <option value="dominant">主色卡通</option>
+            <option value="average">均色真实</option>
+          </select>
+          <select id="colorSystem" class="compact-select">
+            <!-- Populated by JS -->
+          </select>
         </div>
+      </section>
 
-        <!-- Color stats panel -->
-        <div class="panel" id="statsPanel">
+      <!-- AI prompt bar -->
+      <div id="aiPromptWrap" class="ai-prompt-wrap hidden">
+        <textarea
+          id="aiPrompt"
+          class="ai-prompt"
+          rows="2"
+          placeholder="描述你想要的图案（如：一只可爱的猫咪）"
+        ></textarea>
+      </div>
+
+      <!-- Hidden processing canvas -->
+      <canvas id="originalCanvas" hidden></canvas>
+
+      <!-- Dual preview: original + pixel pattern (full width) -->
+      <section class="dual-preview">
+        <div class="preview-pane" id="originalPane">
+          <h4>原图</h4>
+          <img id="originalPreview" class="preview-img hidden" />
+        </div>
+        <div class="preview-pane">
+          <h4>拼豆图案 <button id="editToggle" class="btn btn--sm hidden">编辑</button></h4>
+          <div class="preview-wrap">
+            <canvas id="previewCanvas"></canvas>
+            <div id="tooltip" class="tooltip hidden"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Edit toolbar -->
+      <div id="editToolbar" class="edit-toolbar hidden">
+        <span>选择颜色：</span>
+        <div id="editPalette" class="edit-palette"></div>
+        <button id="editDone" class="btn btn--sm btn--primary">完成编辑</button>
+      </div>
+
+      <!-- Color stats + export (side by side below previews) -->
+      <section class="bottom-bar">
+        <div class="panel stats-panel" id="statsPanel">
           <h3>颜色统计 <span id="totalCount" class="total-count"></span></h3>
           <div id="colorList" class="color-list"></div>
         </div>
-
-        <!-- Export panel -->
         <div class="panel export-panel">
           <button id="exportGrid" class="btn btn--primary" disabled>导出图纸</button>
           <button id="exportStats" class="btn" disabled>导出统计</button>
         </div>
-
       </section>
+
     </main>
 
     <!-- ── Footer ──────────────────────────────────────────────────────── -->

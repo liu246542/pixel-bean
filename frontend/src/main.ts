@@ -43,7 +43,7 @@ const $aiUrl = document.getElementById('aiUrl') as HTMLInputElement;
 const $aiTest = document.getElementById('aiTest') as HTMLButtonElement;
 const $aiStatus = document.getElementById('aiStatus') as HTMLSpanElement;
 
-const $uploadArea = document.getElementById('uploadArea') as HTMLDivElement;
+const $uploadArea = document.getElementById('uploadArea') as HTMLElement;
 const $fileInput = document.getElementById('fileInput') as HTMLInputElement;
 
 const $imageActions = document.getElementById('imageActions') as HTMLDivElement;
@@ -500,9 +500,8 @@ function bindAiEvents(): void {
   $aiOptimize.addEventListener('click', async () => {
     if (!aiConfig || !imageSrc) return;
 
-    // Show loading overlay
     $loadingOverlay.classList.remove('hidden');
-    $loadingText.textContent = 'AI processing...';
+    $loadingText.textContent = 'AI 优化中...';
 
     const prompt = $aiPrompt.value.trim() || DEFAULT_PROMPT;
 
@@ -528,7 +527,8 @@ function bindAiEvents(): void {
     if (!aiConfig) return;
     const userPrompt = $aiPrompt.value.trim();
     if (!userPrompt) {
-      $aiPrompt.placeholder = '请输入图案描述（如：一只可爱的猫咪）';
+      $aiPrompt.value = '';
+      $aiPrompt.placeholder = '请输入要生成的内容（如：一只可爱的猫咪、一朵向日葵）';
       $aiPrompt.focus();
       return;
     }
@@ -536,7 +536,7 @@ function bindAiEvents(): void {
     $loadingOverlay.classList.remove('hidden');
     $loadingText.textContent = 'AI 生成中...';
 
-    const prompt = `${DEFAULT_GENERATE_PROMPT}, ${userPrompt}`;
+    const prompt = `${userPrompt}。${DEFAULT_GENERATE_PROMPT}`;
     const result = await generateImage(aiConfig, '', prompt, (text) => {
       $loadingText.textContent = text;
     });

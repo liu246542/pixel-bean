@@ -13,7 +13,7 @@ export const DEFAULT_PROMPT =
   '将这张图片转换为适合拼豆制作的风格：chibi art style, 纯色块, 无抗锯齿, 无渐变, 无阴影, 白色背景, 硬边缘, bold clean outlines, 颜色不超过6种且对比强烈, cartoon style';
 
 export const DEFAULT_GENERATE_PROMPT =
-  '拼豆风格像素图, chibi art style, 纯白色背景, 卡通动漫风格, 无抗锯齿, 无渐变, 无阴影, 纯色块, 硬边缘, 颜色不超过6种且对比强烈, bold clean outlines';
+  '要求：拼豆风格像素图，卡通动漫风格，无抗锯齿，无渐变，无阴影，纯色块，背景白色，颜色不超过6种且对比强烈，硬边缘，bold clean outlines，比例1:1';
 
 const STORAGE_KEY = 'pixel-bean-ai-config';
 
