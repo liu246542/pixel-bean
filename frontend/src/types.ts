@@ -17,6 +17,7 @@ export interface PaletteColor {
 export interface MappedPixel {
   paletteId: string;
   color: RgbColor;
+  isExternal?: boolean;
 }
 
 // Supported bead color systems
