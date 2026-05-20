@@ -153,6 +153,7 @@ function loadImageFile(file: File): void {
   reader.onload = () => {
     imageSrc = reader.result as string;
     originalImageSrc = imageSrc;
+    $uploadArea.classList.add('hidden');
     processImage();
   };
   reader.readAsDataURL(file);
@@ -544,6 +545,7 @@ function bindAiEvents(): void {
     if (result.success && result.image) {
       imageSrc = result.image.startsWith('data:') ? result.image : `data:image/png;base64,${result.image}`;
       originalImageSrc = imageSrc;
+      $uploadArea.classList.add('hidden');
       processImage();
     } else {
       alert(result.error ?? 'AI 生成失败');
