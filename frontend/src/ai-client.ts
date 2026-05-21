@@ -101,9 +101,11 @@ export function generateImage(
         onProgress?.(msg.text);
       } else if (msg.type === 'done') {
         clearTimeout(timeout);
+        ws.close();
         resolve({ success: true, image: msg.image });
       } else if (msg.type === 'error') {
         clearTimeout(timeout);
+        ws.close();
         resolve({ success: false, error: msg.error });
       }
     };

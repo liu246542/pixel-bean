@@ -215,7 +215,8 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
     try { if (fs.existsSync(markerPath)) fs.unlinkSync(markerPath); } catch {}
     try { if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath); } catch {}
     try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch {}
-    ws.close();
+    // Don't close WebSocket from server — let client close after receiving
+    // the done/error message. This prevents data loss through reverse proxies.
   }
 }
 
