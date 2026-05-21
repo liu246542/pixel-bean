@@ -8,6 +8,16 @@ function rgbToHex(r: number, g: number, b: number): string {
   return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
 }
 
+const CJK_RE = /[^\x00-\x7F]/;
+
+function pdfSafeKey(hex: string, system: ColorSystem): string {
+  const key = getDisplayKey(hex, system);
+  if (key === '?' || CJK_RE.test(key)) {
+    return getDisplayKey(hex, 'MARD') !== '?' ? getDisplayKey(hex, 'MARD') : hex.slice(1, 5);
+  }
+  return key;
+}
+
 export function exportPdf(
   grid: MappedPixel[][],
   system: ColorSystem,
@@ -29,7 +39,8 @@ export function exportPdf(
   doc.setFontSize(14);
   doc.text('Pixel Bean — Bead Pattern', margin, margin + 4);
   doc.setFontSize(8);
-  doc.text(`${cols} x ${rows}  |  ${system}`, margin, margin + 9);
+  const cjkNote = CJK_RE.test(system) ? ` (PDF fallback: MARD)` : '';
+  doc.text(`${cols} x ${rows}  |  ${system}${cjkNote}`, margin, margin + 9);
 
   const overviewW = pageW - margin * 2;
   const overviewH = pageH - margin * 2 - 15;
@@ -54,7 +65,7 @@ export function exportPdf(
       }
 
       if (!isBlank && cellOverview >= 3) {
-        const key = getDisplayKey(hex, system);
+        const key = pdfSafeKey(hex, system);
         const contrast = getContrastColor(hex);
         const [tr, tg, tb] = contrast === '#000000' ? [0, 0, 0] : [255, 255, 255];
         doc.setTextColor(tr, tg, tb);
@@ -116,7 +127,7 @@ export function exportPdf(
           doc.rect(dx + c * detailCell, dy + r * detailCell, detailCell, detailCell, 'S');
 
           if (!isBlank && detailCell >= 4) {
-            const key = getDisplayKey(hex, system);
+            const key = pdfSafeKey(hex, system);
             const contrast = getContrastColor(hex);
             const [tr, tg, tb] = contrast === '#000000' ? [0, 0, 0] : [255, 255, 255];
             doc.setTextColor(tr, tg, tb);
@@ -196,7 +207,7 @@ export function exportPdf(
       y = drawLegendHeader(margin + 5);
     }
 
-    const key = getDisplayKey(entry.hex, system);
+    const key = pdfSafeKey(entry.hex, system);
     const pct = ((entry.count / total) * 100).toFixed(1);
 
     doc.setFillColor(entry.r, entry.g, entry.b);
