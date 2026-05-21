@@ -138,7 +138,11 @@ export function enterFocusMode(
   overlay.innerHTML = `
     <div class="focus-layout">
       <div class="focus-canvas-area">
-        <canvas class="focus-canvas"></canvas>
+        <div class="focus-canvas-wrap">
+          <canvas class="focus-canvas"></canvas>
+          <canvas class="focus-crosshair"></canvas>
+        </div>
+        <div class="focus-coord-label hidden"></div>
       </div>
       <div class="focus-sidebar"></div>
     </div>
@@ -163,6 +167,7 @@ export function enterFocusMode(
   renderFocusUI();
   drawFocusCanvas();
   setupFocusCanvasClick();
+  setupCrosshair();
   return true;
 }
 
@@ -416,4 +421,89 @@ function setupFocusCanvasClick(): void {
     renderFocusUI();
     drawFocusCanvas();
   }, { signal: clickAbort.signal });
+}
+
+function setupCrosshair(): void {
+  if (!state) return;
+  const { canvas, overlay, clickAbort } = state;
+  const crossCanvas = overlay.querySelector('.focus-crosshair') as HTMLCanvasElement;
+  const coordLabel = overlay.querySelector('.focus-coord-label') as HTMLElement;
+
+  function hitToGrid(clientX: number, clientY: number): { row: number; col: number } | null {
+    if (!state) return null;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mx = (clientX - rect.left) * scaleX - RULER_SIZE;
+    const my = (clientY - rect.top) * scaleY - RULER_SIZE;
+    const cols = state.grid[0].length;
+    const cellSize = (canvas.width - RULER_SIZE) / cols;
+    const col = Math.floor(mx / cellSize);
+    const row = Math.floor(my / cellSize);
+    if (row < 0 || row >= state.grid.length || col < 0 || col >= cols) return null;
+    return { row, col };
+  }
+
+  function drawCrosshair(row: number, col: number): void {
+    if (!state) return;
+    const rows = state.grid.length;
+    const cols = state.grid[0].length;
+    const cellSize = (canvas.width - RULER_SIZE) / cols;
+    const ox = RULER_SIZE;
+    const oy = RULER_SIZE;
+
+    crossCanvas.width = canvas.width;
+    crossCanvas.height = canvas.height;
+    const ctx = crossCanvas.getContext('2d')!;
+
+    ctx.strokeStyle = 'rgba(74, 144, 217, 0.4)';
+    ctx.lineWidth = 1;
+
+    // Horizontal line
+    const hy = oy + row * cellSize + cellSize / 2;
+    ctx.beginPath();
+    ctx.moveTo(ox, hy);
+    ctx.lineTo(ox + cols * cellSize, hy);
+    ctx.stroke();
+
+    // Vertical line
+    const vx = ox + col * cellSize + cellSize / 2;
+    ctx.beginPath();
+    ctx.moveTo(vx, oy);
+    ctx.lineTo(vx, oy + rows * cellSize);
+    ctx.stroke();
+
+    // Highlight current cell border
+    ctx.strokeStyle = 'rgba(74, 144, 217, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(ox + col * cellSize, oy + row * cellSize, cellSize, cellSize);
+
+    // Highlight ruler labels
+    ctx.fillStyle = 'rgba(74, 144, 217, 0.2)';
+    ctx.fillRect(ox + col * cellSize, 0, cellSize, RULER_SIZE);
+    ctx.fillRect(0, oy + row * cellSize, RULER_SIZE, cellSize);
+  }
+
+  function clearCrosshair(): void {
+    const ctx = crossCanvas.getContext('2d');
+    if (ctx) ctx.clearRect(0, 0, crossCanvas.width, crossCanvas.height);
+    coordLabel.classList.add('hidden');
+  }
+
+  function onPointer(clientX: number, clientY: number): void {
+    const hit = hitToGrid(clientX, clientY);
+    if (!hit) { clearCrosshair(); return; }
+    drawCrosshair(hit.row, hit.col);
+    coordLabel.textContent = `第 ${hit.row + 1} 行  第 ${hit.col + 1} 列`;
+    coordLabel.classList.remove('hidden');
+  }
+
+  canvas.addEventListener('mousemove', (e) => onPointer(e.clientX, e.clientY), { signal: clickAbort.signal });
+  canvas.addEventListener('mouseleave', clearCrosshair, { signal: clickAbort.signal });
+
+  canvas.addEventListener('touchmove', (e) => {
+    const t = e.touches[0];
+    if (t) onPointer(t.clientX, t.clientY);
+  }, { signal: clickAbort.signal, passive: true });
+  canvas.addEventListener('touchend', clearCrosshair, { signal: clickAbort.signal });
 }
