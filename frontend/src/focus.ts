@@ -375,14 +375,14 @@ function drawFocusCanvas(): void {
   ctx.textBaseline = 'middle';
   for (let c = 0; c < cols; c++) {
     if (cellSize < 10 && c % 5 !== 0) continue;
-    ctx.fillText(String(c + 1 + view.colOffset), ox + c * cellSize + cellSize / 2, RULER_SIZE / 2);
+    ctx.fillText(String(c + 1), ox + c * cellSize + cellSize / 2, RULER_SIZE / 2);
   }
 
   // ── Row numbers (left) ──
   ctx.textAlign = 'right';
   for (let r = 0; r < rows; r++) {
     if (cellSize < 10 && r % 5 !== 0) continue;
-    ctx.fillText(String(r + 1 + view.rowOffset), RULER_SIZE - 3, oy + r * cellSize + cellSize / 2);
+    ctx.fillText(String(r + 1), RULER_SIZE - 3, oy + r * cellSize + cellSize / 2);
   }
 
   // ── Grid cells ──
@@ -579,8 +579,7 @@ function setupCrosshair(): void {
       if (hit.row === lastRow && hit.col === lastCol) return;
       lastRow = hit.row; lastCol = hit.col;
       drawCrosshair(hit.row, hit.col);
-      const view = getViewGrid();
-      coordLabel.textContent = `第 ${hit.row + 1 + view.rowOffset} 行  第 ${hit.col + 1 + view.colOffset} 列`;
+      coordLabel.textContent = `第 ${hit.row + 1} 行  第 ${hit.col + 1} 列`;
       coordLabel.classList.remove('hidden');
     });
   }
