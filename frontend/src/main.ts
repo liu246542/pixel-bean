@@ -35,6 +35,7 @@ import { enterFocusMode, isFocusActive, redrawFocus } from './focus';
 let fakeProgressTimer: ReturnType<typeof setInterval> | null = null;
 
 function startFakeProgress(): void {
+  if (fakeProgressTimer) { clearInterval(fakeProgressTimer); fakeProgressTimer = null; }
   const startTime = Date.now();
   const expectedMs = 4 * 60 * 1000;
   $loadingProgress.style.width = '0%';
@@ -52,7 +53,7 @@ function startFakeProgress(): void {
     if (remaining > 0) {
       $loadingEta.textContent = `预计还需 ${remaining} 分钟`;
     } else {
-      $loadingEta.textContent = '即将完成...';
+      $loadingEta.textContent = '耗时较长，请耐心等待...';
     }
   }, 1000);
 }
@@ -768,8 +769,9 @@ function bindAiEvents(): void {
     }
 
     const userPrompt = $aiPrompt.value.trim();
-    if (!userPrompt) {
+    if (!userPrompt || userPrompt === DEFAULT_GENERATE_PROMPT) {
       $aiPrompt.focus();
+      $aiPrompt.setSelectionRange(0, 0);
       return;
     }
 
