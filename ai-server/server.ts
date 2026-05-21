@@ -205,89 +205,98 @@ async function handleGenerate(
       codexPrompt = `${prompt}。请生成一张图片`;
     }
 
-    send(ws, { type: 'progress', text: '正在调用 Codex 生成图片...' });
-
     heartbeat = setInterval(() => {
       send(ws, { type: 'progress', text: '处理中...' });
     }, 20_000);
 
-    // HIGH #2: Spawn codex directly, pipe prompt via stdin
-    await new Promise<void>((resolve, reject) => {
-      const child = spawn('codex', ['exec', '-'], {
-        cwd: tmpDir,
-        env: process.env,
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
+    const MAX_ATTEMPTS = 3;
 
-      onChild(child);
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      if (isAborted()) return;
 
-      child.stdin.end(codexPrompt);
-
-      const timeout = setTimeout(() => {
-        child.kill('SIGTERM');
-        reject(new Error('Codex timed out after 10 minutes'));
-      }, 600_000);
-
-      const MAX_LOG = 64_000;
-
-      child.stdout.on('data', (chunk: Buffer) => {
-        const text = chunk.toString();
-        codexLog = (codexLog + text).slice(-MAX_LOG);
-        for (const line of text.split('\n')) {
-          const trimmed = line.trim();
-          if (trimmed && trimmed.length > 2) {
-            send(ws, { type: 'progress', text: trimmed.slice(0, 200) });
-          }
-        }
-      });
-
-      child.stderr.on('data', (chunk: Buffer) => {
-        codexLog = (codexLog + chunk.toString()).slice(-MAX_LOG);
-      });
-
-      // HIGH #1: Check exit code
-      child.on('close', (code, signal) => {
-        clearTimeout(timeout);
-        if (heartbeat) clearInterval(heartbeat);
-        onChild(null as unknown as ChildProcess);
-
-        if (isAborted()) {
-          reject(new Error('Aborted'));
-          return;
-        }
-
-        if (code === 0 || code === null) {
-          resolve();
-        } else {
-          reject(new Error(`Codex exited with ${signal ? `signal ${signal}` : `code ${code}`}`));
-        }
-      });
-
-      child.on('error', (err) => {
-        clearTimeout(timeout);
-        if (heartbeat) clearInterval(heartbeat);
-        reject(err);
-      });
-    });
-
-    if (isAborted()) return;
-
-    send(ws, { type: 'progress', text: '正在读取生成的图片...' });
-
-    // Find the output image
-    if (fs.existsSync(outputPath)) {
-      outputBuffer = fs.readFileSync(outputPath);
-    } else {
-      const findCmd = `find "${genDir}" -name '*.png' -newer "${markerPath}" -printf '%T@ %p\\n' 2>/dev/null | sort -nr | head -1 | cut -d' ' -f2-`;
-      const newest = execSync(findCmd, { encoding: 'utf-8' }).trim();
-      if (!newest || !fs.existsSync(newest)) {
-        console.error('Codex output not found. Log:\n', codexLog.slice(-2000));
-        throw new Error('Codex did not produce an output image');
+      if (attempt > 1) {
+        // Reset marker for retry
+        fs.writeFileSync(markerPath, '');
+        const delay = attempt * 5_000;
+        send(ws, { type: 'progress', text: `第 ${attempt - 1} 次失败，${delay / 1000}秒后重试 (${attempt}/${MAX_ATTEMPTS})...` });
+        await new Promise(r => setTimeout(r, delay));
+        if (isAborted()) return;
       }
-      outputBuffer = fs.readFileSync(newest);
+
+      send(ws, { type: 'progress', text: attempt === 1 ? '正在调用 Codex 生成图片...' : `重试中 (${attempt}/${MAX_ATTEMPTS})...` });
+      codexLog = '';
+
+      // Spawn codex, pipe prompt via stdin
+      const exitOk = await new Promise<boolean>((resolve, reject) => {
+        const child = spawn('codex', ['exec', '-'], {
+          cwd: tmpDir,
+          env: process.env,
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        onChild(child);
+        child.stdin.end(codexPrompt);
+
+        const timeout = setTimeout(() => {
+          child.kill('SIGTERM');
+          resolve(false);
+        }, 600_000);
+
+        const MAX_LOG = 64_000;
+
+        child.stdout.on('data', (chunk: Buffer) => {
+          const text = chunk.toString();
+          codexLog = (codexLog + text).slice(-MAX_LOG);
+          for (const line of text.split('\n')) {
+            const trimmed = line.trim();
+            if (trimmed && trimmed.length > 2) {
+              send(ws, { type: 'progress', text: trimmed.slice(0, 200) });
+            }
+          }
+        });
+
+        child.stderr.on('data', (chunk: Buffer) => {
+          codexLog = (codexLog + chunk.toString()).slice(-MAX_LOG);
+        });
+
+        child.on('close', (code) => {
+          clearTimeout(timeout);
+          onChild(null as unknown as ChildProcess);
+          if (isAborted()) { reject(new Error('Aborted')); return; }
+          resolve(code === 0 || code === null);
+        });
+
+        child.on('error', () => {
+          clearTimeout(timeout);
+          resolve(false);
+        });
+      });
+
+      if (isAborted()) return;
+
+      // Try to find the output image
+      send(ws, { type: 'progress', text: '正在读取生成的图片...' });
+
+      if (fs.existsSync(outputPath)) {
+        outputBuffer = fs.readFileSync(outputPath);
+      } else {
+        const findCmd = `find "${genDir}" -name '*.png' -newer "${markerPath}" -printf '%T@ %p\\n' 2>/dev/null | sort -nr | head -1 | cut -d' ' -f2-`;
+        const newest = execSync(findCmd, { encoding: 'utf-8' }).trim();
+        if (newest && fs.existsSync(newest)) {
+          outputBuffer = fs.readFileSync(newest);
+        }
+      }
+
+      if (outputBuffer) break;
+
+      console.error(`Attempt ${attempt}/${MAX_ATTEMPTS} failed. Exit OK: ${exitOk}. Log:\n`, codexLog.slice(-2000));
+
+      if (attempt === MAX_ATTEMPTS) {
+        throw new Error(`Codex 生成失败，已重试 ${MAX_ATTEMPTS} 次`);
+      }
     }
 
-    const outputBase64 = outputBuffer.toString('base64');
+    const outputBase64 = outputBuffer!.toString('base64');
     send(ws, { type: 'done', success: true, image: outputBase64 });
   } catch (err) {
     if (isAborted()) return;
