@@ -152,6 +152,11 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
 
     send(ws, { type: 'progress', text: '正在调用 Codex 生成图片...' });
 
+    // Heartbeat keeps the WebSocket alive through reverse proxies
+    const heartbeat = setInterval(() => {
+      send(ws, { type: 'progress', text: '处理中...' });
+    }, 20_000);
+
     // Spawn codex as child process to stream output
     await new Promise<void>((resolve, reject) => {
       const child = spawn('/bin/bash', ['-c', 'echo "$CODEX_PROMPT" | codex exec -'], {
@@ -179,11 +184,13 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
 
       child.on('close', () => {
         clearTimeout(timeout);
+        clearInterval(heartbeat);
         resolve();
       });
 
       child.on('error', (err) => {
         clearTimeout(timeout);
+        clearInterval(heartbeat);
         reject(err);
       });
     });
