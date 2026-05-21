@@ -147,6 +147,7 @@ let aiConfig: AIServiceConfig | null = null;
 let aiMode: 'optimize' | 'generate' | null = null;
 let editMode = false;
 let editColor: { rgb: { r: number; g: number; b: number }; hex: string } | null = null;
+let processGeneration = 0;
 const editHistory = new EditHistory();
 
 // ── Initialization ──────────────────────────────────────────────────────────
@@ -258,8 +259,10 @@ function loadImageFile(file: File): void {
 function processImage(): void {
   if (!imageSrc) return;
 
+  const gen = ++processGeneration;
   const img = new Image();
   img.onload = () => {
+    if (gen !== processGeneration) return;
     // Draw on the hidden original canvas
     $originalCanvas.width = img.width;
     $originalCanvas.height = img.height;

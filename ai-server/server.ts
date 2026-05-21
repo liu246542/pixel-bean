@@ -25,6 +25,10 @@ if (fs.existsSync(envPath)) {
 const PORT = parseInt(process.env.PORT ?? '3456', 10);
 const TOKEN = process.env.TOKEN ?? 'changeme';
 
+if (TOKEN === 'changeme') {
+  console.warn('⚠ WARNING: Using default token. Set TOKEN in .env for security.');
+}
+
 const tmpDir = path.join(__dirname, '.tmp');
 if (!fs.existsSync(tmpDir)) {
   fs.mkdirSync(tmpDir, { recursive: true });
@@ -77,7 +81,7 @@ const server = http.createServer((req, res) => {
 
 // ── WebSocket server (image generation) ────────────────────────────────────
 
-const wss = new WebSocketServer({ server, path: '/generate' });
+const wss = new WebSocketServer({ server, path: '/generate', maxPayload: 10 * 1024 * 1024 });
 
 let queue: Promise<void> = Promise.resolve();
 
@@ -120,11 +124,13 @@ wss.on('connection', (ws: WebSocket, req: http.IncomingMessage) => {
       return;
     }
 
-    const { image, prompt } = parsed;
-    if (!prompt) {
+    const { image } = parsed;
+    let { prompt } = parsed;
+    if (!prompt || typeof prompt !== 'string') {
       ws.send(JSON.stringify({ type: 'error', error: 'Missing prompt' }));
       return;
     }
+    prompt = prompt.slice(0, 2000);
 
     const queueHeartbeat = setInterval(() => {
       send(ws, { type: 'progress', text: '排队中...' });
@@ -333,5 +339,5 @@ server.listen(PORT, () => {
   console.log(`AI Server running at http://localhost:${PORT}`);
   console.log(`  Health: GET /health?token=...`);
   console.log(`  Generate: WebSocket /generate?token=...`);
-  console.log(`Token: ${TOKEN}`);
+  console.log(`Token: ${TOKEN.slice(0, 4)}${'*'.repeat(Math.max(0, TOKEN.length - 4))}`);
 });

@@ -1,4 +1,5 @@
 import type { MappedPixel, ColorSystem, PixelationMode } from './types';
+import { TRANSPARENT_KEY } from './types';
 import { hexToRgb } from './palette';
 
 const AUTO_SAVE_KEY = 'pixel-bean-autosave';
@@ -12,9 +13,12 @@ export interface SavedState {
   timestamp: number;
 }
 
-function gridToCompact(grid: MappedPixel[][]): { hex: string; ext?: boolean }[][] {
+function gridToCompact(grid: MappedPixel[][]): { hex: string; ext?: boolean; erase?: boolean }[][] {
   return grid.map(row =>
     row.map(cell => {
+      if (cell.paletteId === TRANSPARENT_KEY) {
+        return { hex: '#FFFFFF', ext: true, erase: true };
+      }
       const hex = '#' + [cell.color.r, cell.color.g, cell.color.b]
         .map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
       return cell.isExternal ? { hex, ext: true } : { hex };
@@ -22,9 +26,12 @@ function gridToCompact(grid: MappedPixel[][]): { hex: string; ext?: boolean }[][
   );
 }
 
-function compactToGrid(compact: { hex: string; ext?: boolean }[][]): MappedPixel[][] {
+function compactToGrid(compact: { hex: string; ext?: boolean; erase?: boolean }[][]): MappedPixel[][] {
   return compact.map(row =>
     row.map(cell => {
+      if (cell.erase) {
+        return { paletteId: TRANSPARENT_KEY, color: { r: 255, g: 255, b: 255 }, isExternal: true };
+      }
       const rgb = hexToRgb(cell.hex);
       return {
         paletteId: cell.hex,
@@ -78,7 +85,7 @@ export function exportCsv(grid: MappedPixel[][]): void {
   const lines: string[] = [];
   for (const row of grid) {
     const cells = row.map(cell => {
-      if (cell.isExternal) return 'TRANSPARENT';
+      if (cell.isExternal || cell.paletteId === TRANSPARENT_KEY) return 'TRANSPARENT';
       return '#' + [cell.color.r, cell.color.g, cell.color.b]
         .map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
     });
