@@ -15,6 +15,7 @@ export function exportPdf(
   const rows = grid.length;
   if (rows === 0) return;
   const cols = grid[0].length;
+  if (cols === 0) return;
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
@@ -110,11 +111,25 @@ export function exportPdf(
   doc.setDrawColor(180, 180, 180);
   doc.line(margin, startY + 1.5, pageW - margin, startY + 1.5);
 
+  function drawLegendHeader(atY: number): number {
+    doc.setFontSize(7);
+    doc.setTextColor(80, 80, 80);
+    doc.text('Color', colX[0], atY);
+    doc.text('Key', colX[1], atY);
+    doc.text('Hex', colX[2], atY);
+    doc.text('Count', colX[3], atY);
+    doc.text('%', colX[4], atY);
+    doc.setLineWidth(0.2);
+    doc.setDrawColor(180, 180, 180);
+    doc.line(margin, atY + 1.5, pageW - margin, atY + 1.5);
+    return atY + rowH;
+  }
+
   let y = startY + rowH;
   for (const entry of sorted) {
     if (y > pageH - margin - 10) {
       doc.addPage();
-      y = margin + 5;
+      y = drawLegendHeader(margin + 5);
     }
 
     const key = getDisplayKey(entry.hex, system);

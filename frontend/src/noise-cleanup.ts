@@ -54,6 +54,8 @@ export function removeIsolatedNoise(grid: MappedPixel[][]): void {
 
       for (const [nr, nc] of neighborCoords) {
         const neighbor = grid[nr][nc];
+        if (neighbor.isExternal || neighbor.paletteId === TRANSPARENT_KEY) continue;
+
         const neighborHex = rgbToHex(neighbor.color.r, neighbor.color.g, neighbor.color.b);
 
         if (neighborHex === cellHex) {
