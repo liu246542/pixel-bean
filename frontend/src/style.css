@@ -572,6 +572,43 @@ a:hover {
   to { transform: rotate(360deg); }
 }
 
+.loading-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 280px;
+  max-width: 80vw;
+}
+
+.loading-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.loading-progress-fill {
+  height: 100%;
+  background: #fff;
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.5s ease-out;
+}
+
+.loading-pct {
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  min-width: 36px;
+  text-align: right;
+}
+
+.loading-eta {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-top: 4px;
+}
+
 /* ── Focus mode (immersive fullscreen) ──────────────────────────────────── */
 .focus-overlay {
   position: fixed;

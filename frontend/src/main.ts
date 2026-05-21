@@ -32,6 +32,40 @@ import { enterFocusMode, isFocusActive, redrawFocus } from './focus';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
+let fakeProgressTimer: ReturnType<typeof setInterval> | null = null;
+
+function startFakeProgress(): void {
+  const startTime = Date.now();
+  const expectedMs = 4 * 60 * 1000;
+  $loadingProgress.style.width = '0%';
+  $loadingPct.textContent = '0%';
+  $loadingEta.textContent = '预计需要 3-5 分钟';
+
+  fakeProgressTimer = setInterval(() => {
+    const elapsed = Date.now() - startTime;
+    // Asymptotic curve: approaches 95% but never reaches it
+    const pct = Math.min(95, Math.round((1 - Math.exp(-elapsed / expectedMs * 3)) * 95));
+    $loadingProgress.style.width = `${pct}%`;
+    $loadingPct.textContent = `${pct}%`;
+
+    const remaining = Math.max(0, Math.round((expectedMs - elapsed) / 60000));
+    if (remaining > 0) {
+      $loadingEta.textContent = `预计还需 ${remaining} 分钟`;
+    } else {
+      $loadingEta.textContent = '即将完成...';
+    }
+  }, 1000);
+}
+
+function stopFakeProgress(success: boolean): void {
+  if (fakeProgressTimer) { clearInterval(fakeProgressTimer); fakeProgressTimer = null; }
+  if (success) {
+    $loadingProgress.style.width = '100%';
+    $loadingPct.textContent = '100%';
+    $loadingEta.textContent = '';
+  }
+}
+
 function rgbToHex(r: number, g: number, b: number): string {
   return (
     '#' +
@@ -96,6 +130,9 @@ const $focusBtn = document.getElementById('focusBtn') as HTMLButtonElement;
 
 const $loadingOverlay = document.getElementById('loadingOverlay') as HTMLDivElement;
 const $loadingText = document.getElementById('loadingText') as HTMLParagraphElement;
+const $loadingProgress = document.getElementById('loadingProgress') as HTMLDivElement;
+const $loadingPct = document.getElementById('loadingPct') as HTMLSpanElement;
+const $loadingEta = document.getElementById('loadingEta') as HTMLParagraphElement;
 
 // ── Application state ───────────────────────────────────────────────────────
 
@@ -691,6 +728,7 @@ function bindAiEvents(): void {
 
     $loadingOverlay.classList.remove('hidden');
     $loadingText.textContent = 'AI 优化中...';
+    startFakeProgress();
 
     const prompt = $aiPrompt.value.trim() || DEFAULT_PROMPT;
     const base64 = imageSrc.includes(',') ? imageSrc.split(',')[1] : imageSrc;
@@ -698,6 +736,8 @@ function bindAiEvents(): void {
     const result = await generateImage(aiConfig, base64, prompt, (text) => {
       $loadingText.textContent = text;
     });
+
+    stopFakeProgress(result.success);
 
     if (result.success && result.image) {
       imageSrc = result.image.startsWith('data:') ? result.image : `data:image/png;base64,${result.image}`;
@@ -735,11 +775,14 @@ function bindAiEvents(): void {
 
     $loadingOverlay.classList.remove('hidden');
     $loadingText.textContent = 'AI 生成中...';
+    startFakeProgress();
 
     const prompt = userPrompt;
     const result = await generateImage(aiConfig, '', prompt, (text) => {
       $loadingText.textContent = text;
     });
+
+    stopFakeProgress(result.success);
 
     if (result.success && result.image) {
       imageSrc = result.image.startsWith('data:') ? result.image : `data:image/png;base64,${result.image}`;
