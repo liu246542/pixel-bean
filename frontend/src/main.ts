@@ -13,6 +13,7 @@ import {
 import { pixelate } from './pixelation';
 import { mergeColors } from './color-merge';
 import { markBackground } from './background';
+import { removeIsolatedNoise } from './noise-cleanup';
 import { drawPreview, getCellAt } from './preview';
 import { exportKeyGrid, exportStats } from './export';
 import {
@@ -26,6 +27,7 @@ import {
 import type { AIServiceConfig } from './ai-client';
 import { showCropModal } from './crop';
 import { autoSave, autoLoad, restoreGrid, exportCsv, importCsv } from './storage';
+import { exportPdf } from './pdf-export';
 import { enterFocusMode, isFocusActive, redrawFocus } from './focus';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -84,6 +86,7 @@ const $colorList = document.getElementById('colorList') as HTMLDivElement;
 const $saveBtn = document.getElementById('saveBtn') as HTMLButtonElement;
 const $exportGrid = document.getElementById('exportGrid') as HTMLButtonElement;
 const $exportStats = document.getElementById('exportStats') as HTMLButtonElement;
+const $exportPdf = document.getElementById('exportPdf') as HTMLButtonElement;
 const $exportCsv = document.getElementById('exportCsv') as HTMLButtonElement;
 const $importCsv = document.getElementById('importCsv') as HTMLInputElement;
 const $focusBtn = document.getElementById('focusBtn') as HTMLButtonElement;
@@ -152,6 +155,7 @@ function init(): void {
     $saveBtn.disabled = false;
     $exportGrid.disabled = false;
     $exportStats.disabled = false;
+    $exportPdf.disabled = false;
     $exportCsv.disabled = false;
     $focusBtn.disabled = false;
     $editToggle.classList.remove('hidden');
@@ -237,6 +241,7 @@ function processImage(): void {
 
     grid = pixelate(imageData, cols, rows, activePalette, mode, fallback);
     mergeColors(grid, threshold);
+    removeIsolatedNoise(grid);
     markBackground(grid);
     drawPreview($previewCanvas, grid, currentSystem);
     updateColorStats();
@@ -249,6 +254,7 @@ function processImage(): void {
     $saveBtn.disabled = false;
     $exportGrid.disabled = false;
     $exportStats.disabled = false;
+    $exportPdf.disabled = false;
     $exportCsv.disabled = false;
     $focusBtn.disabled = false;
     $imageActions.classList.remove('hidden');
@@ -543,6 +549,10 @@ function bindExportEvents(): void {
   $exportStats.addEventListener('click', () => {
     if (grid.length > 0) exportStats(grid, currentSystem);
   });
+
+  $exportPdf.addEventListener('click', () => {
+    if (grid.length > 0) exportPdf(grid, currentSystem);
+  });
 }
 
 // ── CSV import/export ───────────────────────────────────────────────────────
@@ -564,7 +574,8 @@ function bindCsvEvents(): void {
       $saveBtn.disabled = false;
     $exportGrid.disabled = false;
       $exportStats.disabled = false;
-      $exportCsv.disabled = false;
+      $exportPdf.disabled = false;
+    $exportCsv.disabled = false;
       $focusBtn.disabled = false;
       $editToggle.classList.remove('hidden');
     } catch (e) {

@@ -11,5 +11,8 @@
   "devDependencies": {
     "typescript": "^5.4.5",
     "vite": "^8.0.13"
+  },
+  "dependencies": {
+    "jspdf": "^4.2.1"
   }
 }
