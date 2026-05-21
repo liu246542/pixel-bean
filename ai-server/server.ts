@@ -189,8 +189,11 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
         reject(new Error('Codex timed out after 10 minutes'));
       }, 600_000);
 
+      let codexLog = '';
+
       child.stdout.on('data', (chunk: Buffer) => {
         const text = chunk.toString();
+        codexLog += text;
         for (const line of text.split('\n')) {
           const trimmed = line.trim();
           if (trimmed && trimmed.length > 2) {
@@ -199,7 +202,9 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
         }
       });
 
-      child.stderr.on('data', () => {});
+      child.stderr.on('data', (chunk: Buffer) => {
+        codexLog += chunk.toString();
+      });
 
       child.on('close', () => {
         clearTimeout(timeout);
@@ -224,6 +229,7 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
       const findCmd = `find "${genDir}" -name '*.png' -newer "${markerPath}" -printf '%T@ %p\\n' 2>/dev/null | sort -nr | head -1 | cut -d' ' -f2-`;
       const newest = execSync(findCmd, { encoding: 'utf-8' }).trim();
       if (!newest || !fs.existsSync(newest)) {
+        console.error('Codex output not found. Log:\n', codexLog.slice(-2000));
         throw new Error('Codex did not produce an output image');
       }
       outputBuffer = fs.readFileSync(newest);
