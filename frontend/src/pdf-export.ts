@@ -12,7 +12,8 @@ export function exportPdf(
   grid: MappedPixel[][],
   system: ColorSystem,
   filename = 'pixel-bean-pattern.pdf',
-  boardSize?: number
+  boardSize?: number,
+  autoSplitWhenSmall = true
 ): void {
   const rows = grid.length;
   if (rows === 0) return;
@@ -85,7 +86,7 @@ export function exportPdf(
 
   // ── Board detail pages ────────────────────────────────────────────────────
   // Auto-enable when overview cells are too small for labels
-  const effectiveBoardSize = boardSize ?? (cellOverview < 3 ? 29 : 0);
+  const effectiveBoardSize = boardSize ?? (autoSplitWhenSmall && cellOverview < 3 ? 29 : 0);
   if (effectiveBoardSize > 0) {
     const boards = splitBoards(rows, cols, effectiveBoardSize);
     for (const board of boards) {

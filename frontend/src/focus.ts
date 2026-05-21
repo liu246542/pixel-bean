@@ -476,12 +476,23 @@ function setupFocusCanvasClick(): void {
     const key = cellKey(globalRow, globalCol);
     if (completedCells.has(key)) return;
 
-    // Run flood fill on the full grid for correct cross-board connectivity
-    const region = getConnectedRegion(state.grid, globalRow, globalCol, activeHex, completedCells);
-    for (const rk of region) {
-      completedCells.add(rk);
+    // Flood fill within the visible board only
+    // Build a local completedCells set for the sub-grid
+    const localCompleted = new Set<string>();
+    for (const ck of completedCells) {
+      const [cr, cc] = ck.split(',').map(Number);
+      const lr = cr - view.rowOffset;
+      const lc = cc - view.colOffset;
+      if (lr >= 0 && lr < rows && lc >= 0 && lc < cols) {
+        localCompleted.add(cellKey(lr, lc));
+      }
     }
-    colors[activeIndex].completed += region.length;
+    const localRegion = getConnectedRegion(viewGrid, row, col, activeHex, localCompleted);
+    for (const lk of localRegion) {
+      const [lr, lc] = lk.split(',').map(Number);
+      completedCells.add(cellKey(lr + view.rowOffset, lc + view.colOffset));
+    }
+    colors[activeIndex].completed += localRegion.length;
 
     renderFocusUI();
     drawFocusCanvas();
@@ -504,23 +515,28 @@ function setupCrosshair(): void {
 
   function hitToGrid(clientX: number, clientY: number): { row: number; col: number } | null {
     if (!state) return null;
+    const view = getViewGrid();
+    const rows = view.grid.length;
+    const cols = rows > 0 ? view.grid[0].length : 0;
+    if (rows === 0 || cols === 0) return null;
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     const mx = (clientX - rect.left) * scaleX - RULER_SIZE;
     const my = (clientY - rect.top) * scaleY - RULER_SIZE;
-    const cols = state.grid[0].length;
     const cellSize = (canvas.width - RULER_SIZE) / cols;
     const col = Math.floor(mx / cellSize);
     const row = Math.floor(my / cellSize);
-    if (row < 0 || row >= state.grid.length || col < 0 || col >= cols) return null;
+    if (row < 0 || row >= rows || col < 0 || col >= cols) return null;
     return { row, col };
   }
 
   function drawCrosshair(row: number, col: number): void {
     if (!state) return;
-    const rows = state.grid.length;
-    const cols = state.grid[0].length;
+    const view = getViewGrid();
+    const rows = view.grid.length;
+    const cols = rows > 0 ? view.grid[0].length : 0;
+    if (rows === 0 || cols === 0) return;
     const cellSize = (canvas.width - RULER_SIZE) / cols;
     const ox = RULER_SIZE;
     const oy = RULER_SIZE;
@@ -563,7 +579,8 @@ function setupCrosshair(): void {
       if (hit.row === lastRow && hit.col === lastCol) return;
       lastRow = hit.row; lastCol = hit.col;
       drawCrosshair(hit.row, hit.col);
-      coordLabel.textContent = `第 ${hit.row + 1} 行  第 ${hit.col + 1} 列`;
+      const view = getViewGrid();
+      coordLabel.textContent = `第 ${hit.row + 1 + view.rowOffset} 行  第 ${hit.col + 1 + view.colOffset} 列`;
       coordLabel.classList.remove('hidden');
     });
   }
