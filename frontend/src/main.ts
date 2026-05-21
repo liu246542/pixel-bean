@@ -29,6 +29,7 @@ import { showCropModal } from './crop';
 import { autoSave, autoLoad, restoreGrid, exportCsv, importCsv } from './storage';
 import { exportPdf } from './pdf-export';
 import { enterFocusMode, isFocusActive, redrawFocus } from './focus';
+import { showGuideModal } from './guide';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -126,6 +127,7 @@ const $exportPdf = document.getElementById('exportPdf') as HTMLButtonElement;
 const $exportCsv = document.getElementById('exportCsv') as HTMLButtonElement;
 const $importCsv = document.getElementById('importCsv') as HTMLInputElement;
 const $focusBtn = document.getElementById('focusBtn') as HTMLButtonElement;
+const $guideBtn = document.getElementById('guideBtn') as HTMLButtonElement;
 
 const $loadingOverlay = document.getElementById('loadingOverlay') as HTMLDivElement;
 const $loadingText = document.getElementById('loadingText') as HTMLParagraphElement;
@@ -197,6 +199,7 @@ function init(): void {
     $exportPdf.disabled = false;
     $exportCsv.disabled = false;
     $focusBtn.disabled = false;
+    $guideBtn.disabled = false;
     $editToggle.classList.remove('hidden');
   }
 
@@ -302,6 +305,7 @@ function processImage(): void {
     $exportPdf.disabled = false;
     $exportCsv.disabled = false;
     $focusBtn.disabled = false;
+    $guideBtn.disabled = false;
     $imageActions.classList.remove('hidden');
     $editToggle.classList.remove('hidden');
 
@@ -671,6 +675,7 @@ function bindCsvEvents(): void {
       $exportPdf.disabled = false;
     $exportCsv.disabled = false;
       $focusBtn.disabled = false;
+    $guideBtn.disabled = false;
       $editToggle.classList.remove('hidden');
     } catch (e) {
       alert(`导入失败: ${e instanceof Error ? e.message : e}`);
@@ -689,6 +694,11 @@ function bindFocusEvents(): void {
       $focusBtn.disabled = false;
     }, bs);
     if (ok) $focusBtn.disabled = true;
+  });
+
+  $guideBtn.addEventListener('click', () => {
+    if (grid.length === 0) return;
+    showGuideModal(grid, currentSystem);
   });
 }
 
