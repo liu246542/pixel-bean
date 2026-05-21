@@ -146,6 +146,7 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
   const uuid = crypto.randomUUID();
   const inputPath = path.join(tmpDir, `${uuid}-input.png`);
   const outputPath = path.join(tmpDir, `${uuid}-output.png`);
+  let heartbeat: ReturnType<typeof setInterval> | null = null;
 
   try {
     const hasImage = !!image;
@@ -171,7 +172,7 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
     send(ws, { type: 'progress', text: '正在调用 Codex 生成图片...' });
 
     // Heartbeat keeps the WebSocket alive through reverse proxies
-    const heartbeat = setInterval(() => {
+    heartbeat = setInterval(() => {
       send(ws, { type: 'progress', text: '处理中...' });
     }, 20_000);
 
@@ -202,13 +203,13 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
 
       child.on('close', () => {
         clearTimeout(timeout);
-        clearInterval(heartbeat);
+        if (heartbeat) clearInterval(heartbeat);
         resolve();
       });
 
       child.on('error', (err) => {
         clearTimeout(timeout);
-        clearInterval(heartbeat);
+        if (heartbeat) clearInterval(heartbeat);
         reject(err);
       });
     });
@@ -234,7 +235,7 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
     const message = err instanceof Error ? err.message : String(err);
     send(ws, { type: 'error', error: message });
   } finally {
-    clearInterval(heartbeat);
+    if (heartbeat) clearInterval(heartbeat);
     try { if (fs.existsSync(markerPath)) fs.unlinkSync(markerPath); } catch {}
     try { if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath); } catch {}
     // Keep output as history instead of deleting
