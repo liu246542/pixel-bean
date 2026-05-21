@@ -101,7 +101,7 @@ export function exportPdf(
   if (cellOverview < 3) {
     doc.setFontSize(7);
     doc.setTextColor(150, 150, 150);
-    doc.text('(色号详见后续分板页)', ox, oy + rows * cellOverview + 4);
+    doc.text('(See board detail pages for color codes)', ox, oy + rows * cellOverview + 4);
   }
 
   // ── Board detail pages ────────────────────────────────────────────────────

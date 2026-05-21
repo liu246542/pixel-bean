@@ -112,9 +112,11 @@ function drawGuidePreview(canvas: HTMLCanvasElement, grid: MappedPixel[][], syst
       const isBlank = cell.isExternal || cell.paletteId === TRANSPARENT_KEY;
       const hex = isBlank ? '' : rgbToHex(cell.color.r, cell.color.g, cell.color.b);
 
-      const isActive = activeHex !== null ? hex === activeHex
+      const isActive = !isBlank && (
+        activeHex !== null ? hex === activeHex
         : activeRow !== null ? r === activeRow
-        : false;
+        : false
+      );
 
       if (isBlank) { ctx.fillStyle = '#F5F5F5'; }
       else if (isActive) { ctx.fillStyle = hex; ctx.globalAlpha = 1; }
@@ -249,7 +251,7 @@ export function showGuideModal(grid: MappedPixel[][], system: ColorSystem, board
   function renderColorMode(): void {
     const viewGrid = getActiveGrid();
     const guides = generateColorGuide(viewGrid, system);
-    if (guides.length === 0) { textArea.innerHTML = '<p>此板块无内容</p>'; navList.innerHTML = ''; return; }
+    if (guides.length === 0) { textArea.innerHTML = '<p>此板块无内容</p>'; navList.innerHTML = ''; const ctx = guideCanvas.getContext('2d'); if (ctx) ctx.clearRect(0, 0, guideCanvas.width, guideCanvas.height); return; }
     if (activeColorIdx >= guides.length) activeColorIdx = 0;
 
     const g = guides[activeColorIdx];
@@ -289,7 +291,7 @@ export function showGuideModal(grid: MappedPixel[][], system: ColorSystem, board
   function renderRowMode(): void {
     const viewGrid = getActiveGrid();
     const rowGuides = generateRowGuide(viewGrid, system);
-    if (rowGuides.length === 0) { textArea.innerHTML = '<p>此板块无内容</p>'; navList.innerHTML = ''; return; }
+    if (rowGuides.length === 0) { textArea.innerHTML = '<p>此板块无内容</p>'; navList.innerHTML = ''; const ctx = guideCanvas.getContext('2d'); if (ctx) ctx.clearRect(0, 0, guideCanvas.width, guideCanvas.height); return; }
     if (activeRowIdx >= rowGuides.length) activeRowIdx = 0;
 
     const rg = rowGuides[activeRowIdx];
