@@ -10,7 +10,7 @@ export interface AIResult {
 }
 
 export const DEFAULT_PROMPT =
-  '将这张图片转换为适合拼豆制作的风格：纯色块, 无抗锯齿, 无渐变, 无阴影, 白色背景, 硬边缘, bold clean outlines, 颜色不超过6种且对比强烈';
+  '将这张图片转换为适合拼豆制作的风格：纯色块, 无抗锯齿, 无渐变, 无阴影, 白色背景, 硬边缘, bold clean outlines, 颜色不超过6种且对比强烈。裁去多余背景，只保留画面主体，主体居中且尽量撑满画面';
 
 export const DEFAULT_GENERATE_PROMPT =
   '要求：拼豆风格像素图，卡通动漫风格，无抗锯齿，无渐变，无阴影，纯色块，背景白色，颜色不超过6种且对比强烈，硬边缘，bold clean outlines，比例1:1';
