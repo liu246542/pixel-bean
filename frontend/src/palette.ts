@@ -326,10 +326,9 @@ export function convertPaletteToSystem(
   palette: PaletteColor[],
   system: ColorSystem,
 ): PaletteColor[] {
-  return palette.map((entry) => {
-    const key = getDisplayKey(entry.name, system);
-    return key !== '?' ? { ...entry, id: key } : { ...entry };
-  });
+  return palette
+    .filter((entry) => getDisplayKey(entry.name, system) !== '?')
+    .map((entry) => ({ ...entry, id: getDisplayKey(entry.name, system) }));
 }
 
 // ── Excluded-color remapping ─────────────────────────────────────────────────
