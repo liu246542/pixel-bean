@@ -1,6 +1,7 @@
 import './style.css';
 
 import type { MappedPixel, ColorSystem, PixelationMode, PaletteColor } from './types';
+import { EditHistory } from './history';
 import { TRANSPARENT_KEY } from './types';
 import {
   buildFullPalette,
@@ -66,6 +67,8 @@ const $tooltip = document.getElementById('tooltip') as HTMLDivElement;
 const $editToggle = document.getElementById('editToggle') as HTMLButtonElement;
 const $editToolbar = document.getElementById('editToolbar') as HTMLDivElement;
 const $editPalette = document.getElementById('editPalette') as HTMLDivElement;
+const $editUndo = document.getElementById('editUndo') as HTMLButtonElement;
+const $editRedo = document.getElementById('editRedo') as HTMLButtonElement;
 const $editDone = document.getElementById('editDone') as HTMLButtonElement;
 
 const $granularity = document.getElementById('granularity') as HTMLInputElement;
@@ -100,6 +103,7 @@ let aiConfig: AIServiceConfig | null = null;
 let aiMode: 'optimize' | 'generate' | null = null;
 let editMode = false;
 let editColor: { rgb: { r: number; g: number; b: number }; hex: string } | null = null;
+const editHistory = new EditHistory();
 
 // ── Initialization ──────────────────────────────────────────────────────────
 
@@ -415,12 +419,19 @@ function bindPreviewEvents(): void {
 
 // ── Pixel editing ───────────────────────────────────────────────────────────
 
+function updateUndoRedoButtons(): void {
+  $editUndo.disabled = !editHistory.canUndo();
+  $editRedo.disabled = !editHistory.canRedo();
+}
+
 function bindEditEvents(): void {
   $editToggle.addEventListener('click', () => {
     editMode = true;
     $editToolbar.classList.remove('hidden');
     $editToggle.classList.add('hidden');
     $previewCanvas.style.cursor = 'crosshair';
+    editHistory.push(grid);
+    updateUndoRedoButtons();
     buildEditPalette();
   });
 
@@ -430,6 +441,27 @@ function bindEditEvents(): void {
     $editToolbar.classList.add('hidden');
     $editToggle.classList.remove('hidden');
     $previewCanvas.style.cursor = '';
+    editHistory.clear();
+  });
+
+  $editUndo.addEventListener('click', () => {
+    const prev = editHistory.undo();
+    if (prev) {
+      grid = prev;
+      drawPreview($previewCanvas, grid, currentSystem);
+      updateColorStats();
+      updateUndoRedoButtons();
+    }
+  });
+
+  $editRedo.addEventListener('click', () => {
+    const next = editHistory.redo();
+    if (next) {
+      grid = next;
+      drawPreview($previewCanvas, grid, currentSystem);
+      updateColorStats();
+      updateUndoRedoButtons();
+    }
   });
 
   $previewCanvas.addEventListener('click', (e) => {
@@ -441,6 +473,8 @@ function bindEditEvents(): void {
     hit.cell.paletteId = editColor.hex;
     drawPreview($previewCanvas, grid, currentSystem);
     updateColorStats();
+    editHistory.push(grid);
+    updateUndoRedoButtons();
   });
 }
 
