@@ -78,6 +78,7 @@ const $colorSystem = document.getElementById('colorSystem') as HTMLSelectElement
 const $totalCount = document.getElementById('totalCount') as HTMLSpanElement;
 const $colorList = document.getElementById('colorList') as HTMLDivElement;
 
+const $saveBtn = document.getElementById('saveBtn') as HTMLButtonElement;
 const $exportGrid = document.getElementById('exportGrid') as HTMLButtonElement;
 const $exportStats = document.getElementById('exportStats') as HTMLButtonElement;
 const $exportCsv = document.getElementById('exportCsv') as HTMLButtonElement;
@@ -128,6 +129,7 @@ function init(): void {
   bindSettingsEvents();
   bindPreviewEvents();
   bindEditEvents();
+  bindSaveEvent();
   bindExportEvents();
   bindCsvEvents();
   bindFocusEvents();
@@ -146,6 +148,7 @@ function init(): void {
     $colorSystem.value = saved.system;
     drawPreview($previewCanvas, grid, currentSystem);
     updateColorStats();
+    $saveBtn.disabled = false;
     $exportGrid.disabled = false;
     $exportStats.disabled = false;
     $exportCsv.disabled = false;
@@ -225,13 +228,13 @@ function processImage(): void {
     markBackground(grid);
     drawPreview($previewCanvas, grid, currentSystem);
     updateColorStats();
-    autoSave(grid, currentSystem, mode, cols, threshold);
 
     // Show original image preview
     $originalPreview.src = imageSrc!;
     $originalPreview.classList.remove('hidden');
 
     // Enable export/focus buttons and show image actions
+    $saveBtn.disabled = false;
     $exportGrid.disabled = false;
     $exportStats.disabled = false;
     $exportCsv.disabled = false;
@@ -481,6 +484,15 @@ function bindCropEvents(): void {
 
 // ── Export ───────────────────────────────────────────────────────────────────
 
+function bindSaveEvent(): void {
+  $saveBtn.addEventListener('click', () => {
+    if (grid.length === 0) return;
+    autoSave(grid, currentSystem, $pixelMode.value as PixelationMode, parseInt($granularity.value), parseInt($mergeThreshold.value));
+    $saveBtn.textContent = '已保存';
+    setTimeout(() => { $saveBtn.textContent = '保存'; }, 1500);
+  });
+}
+
 function bindExportEvents(): void {
   $exportGrid.addEventListener('click', () => {
     if (grid.length > 0) exportKeyGrid(grid, currentSystem);
@@ -507,8 +519,8 @@ function bindCsvEvents(): void {
       originalImageSrc = null;
       drawPreview($previewCanvas, grid, currentSystem);
       updateColorStats();
-      autoSave(grid, currentSystem, $pixelMode.value as PixelationMode, parseInt($granularity.value), parseInt($mergeThreshold.value));
-      $exportGrid.disabled = false;
+      $saveBtn.disabled = false;
+    $exportGrid.disabled = false;
       $exportStats.disabled = false;
       $exportCsv.disabled = false;
       $focusBtn.disabled = false;
