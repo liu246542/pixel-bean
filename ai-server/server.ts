@@ -148,6 +148,7 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
   const outputPath = path.join(tmpDir, `${uuid}-output.png`);
   let heartbeat: ReturnType<typeof setInterval> | null = null;
   let outputBuffer: Buffer | null = null;
+  let codexLog = '';
 
   try {
     const hasImage = !!image;
@@ -189,8 +190,6 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
         child.kill('SIGTERM');
         reject(new Error('Codex timed out after 10 minutes'));
       }, 600_000);
-
-      let codexLog = '';
 
       child.stdout.on('data', (chunk: Buffer) => {
         const text = chunk.toString();
