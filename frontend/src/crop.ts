@@ -77,12 +77,15 @@ export function showCropModal(imageSrc: string): Promise<string | null> {
     function clampBox() {
       if (bw < 0) { bx += bw; bw = -bw; }
       if (bh < 0) { by += bh; bh = -bh; }
-      bw = Math.max(20, bw);
-      bh = Math.max(20, bh);
       if (aspectRatio !== null) {
+        const minW = Math.max(20, 20 * aspectRatio);
+        bw = Math.max(minW, bw);
         bh = bw / aspectRatio;
         if (bw > dispW) { bw = dispW; bh = bw / aspectRatio; }
         if (bh > dispH) { bh = dispH; bw = bh * aspectRatio; }
+      } else {
+        bw = Math.max(20, bw);
+        bh = Math.max(20, bh);
       }
       bx = Math.max(0, Math.min(bx, dispW - bw));
       by = Math.max(0, Math.min(by, dispH - bh));
@@ -154,20 +157,28 @@ export function showCropModal(imageSrc: string): Promise<string | null> {
 
         if (mode === 'move') {
           bx += dx; by += dy;
-        } else if (mode === 'se' || mode === 'new') {
-          bw += dx;
-          bh = aspectRatio !== null ? bw / aspectRatio : bh + dy;
-        } else if (mode === 'nw') {
-          bw -= dx; bx += dx;
-          if (aspectRatio !== null) { const nh = bw / aspectRatio; by += bh - nh; bh = nh; }
-          else { bh -= dy; by += dy; }
-        } else if (mode === 'ne') {
-          bw += dx;
-          if (aspectRatio !== null) { const nh = bw / aspectRatio; by += bh - nh; bh = nh; }
-          else { bh -= dy; by += dy; }
-        } else if (mode === 'sw') {
-          bw -= dx; bx += dx;
-          bh = aspectRatio !== null ? bw / aspectRatio : bh + dy;
+        } else if (aspectRatio !== null) {
+          // Ratio-locked: use dominant axis to drive resize
+          const delta = Math.abs(dx) >= Math.abs(dy) ? dx : dy * aspectRatio;
+          if (mode === 'se' || mode === 'new') {
+            bw += delta;
+            bh = bw / aspectRatio;
+          } else if (mode === 'nw') {
+            bw -= delta; bx += delta;
+            const nh = bw / aspectRatio; by += bh - nh; bh = nh;
+          } else if (mode === 'ne') {
+            bw += delta;
+            const nh = bw / aspectRatio; by += bh - nh; bh = nh;
+          } else if (mode === 'sw') {
+            bw -= delta; bx += delta;
+            bh = bw / aspectRatio;
+          }
+        } else {
+          // Freeform
+          if (mode === 'se' || mode === 'new') { bw += dx; bh += dy; }
+          else if (mode === 'nw') { bx += dx; by += dy; bw -= dx; bh -= dy; }
+          else if (mode === 'ne') { bw += dx; by += dy; bh -= dy; }
+          else if (mode === 'sw') { bx += dx; bw -= dx; bh += dy; }
         }
 
         clampBox();
