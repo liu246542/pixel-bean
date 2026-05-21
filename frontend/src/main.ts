@@ -24,6 +24,7 @@ import {
 } from './ai-client';
 import type { AIServiceConfig } from './ai-client';
 import { showCropModal } from './crop';
+import { enterFocusMode, exitFocusMode } from './focus';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -78,6 +79,10 @@ const $colorList = document.getElementById('colorList') as HTMLDivElement;
 
 const $exportGrid = document.getElementById('exportGrid') as HTMLButtonElement;
 const $exportStats = document.getElementById('exportStats') as HTMLButtonElement;
+const $focusBtn = document.getElementById('focusBtn') as HTMLButtonElement;
+const $focusPanel = document.getElementById('focusPanel') as HTMLDivElement;
+const $focusExitBar = document.getElementById('focusExitBar') as HTMLDivElement;
+const $focusExit = document.getElementById('focusExit') as HTMLButtonElement;
 
 const $loadingOverlay = document.getElementById('loadingOverlay') as HTMLDivElement;
 const $loadingText = document.getElementById('loadingText') as HTMLParagraphElement;
@@ -121,6 +126,7 @@ function init(): void {
   bindPreviewEvents();
   bindEditEvents();
   bindExportEvents();
+  bindFocusEvents();
   bindAiEvents();
 }
 
@@ -200,9 +206,10 @@ function processImage(): void {
     $originalPreview.src = imageSrc!;
     $originalPreview.classList.remove('hidden');
 
-    // Enable export buttons and show image actions
+    // Enable export/focus buttons and show image actions
     $exportGrid.disabled = false;
     $exportStats.disabled = false;
+    $focusBtn.disabled = false;
     $imageActions.classList.remove('hidden');
     $editToggle.classList.remove('hidden');
 
@@ -455,6 +462,26 @@ function bindExportEvents(): void {
 
   $exportStats.addEventListener('click', () => {
     if (grid.length > 0) exportStats(grid, currentSystem);
+  });
+}
+
+// ── Focus mode ──────────────────────────────────────────────────────────────
+
+function bindFocusEvents(): void {
+  $focusBtn.addEventListener('click', () => {
+    if (grid.length === 0) return;
+    // Hide normal UI, show focus UI
+    $focusPanel.classList.remove('hidden');
+    $focusExitBar.classList.remove('hidden');
+    enterFocusMode(grid, currentSystem, $previewCanvas, $focusPanel);
+  });
+
+  $focusExit.addEventListener('click', () => {
+    exitFocusMode($focusPanel);
+    $focusPanel.classList.add('hidden');
+    $focusExitBar.classList.add('hidden');
+    // Restore normal preview
+    drawPreview($previewCanvas, grid, currentSystem);
   });
 }
 
