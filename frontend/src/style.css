@@ -664,6 +664,23 @@ a:hover {
   margin: 0;
 }
 
+.focus-board-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.focus-board-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  min-width: 100px;
+  text-align: center;
+}
+
 .focus-progress-summary {
   display: flex;
   justify-content: space-between;

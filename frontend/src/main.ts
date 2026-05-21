@@ -616,9 +616,10 @@ function bindCsvEvents(): void {
 function bindFocusEvents(): void {
   $focusBtn.addEventListener('click', () => {
     if (grid.length === 0 || isFocusActive()) return;
+    const bs = $boardSplitToggle.checked ? parseInt($boardSize.value) : undefined;
     const ok = enterFocusMode(grid, currentSystem, () => {
       $focusBtn.disabled = false;
-    });
+    }, bs);
     if (ok) $focusBtn.disabled = true;
   });
 }

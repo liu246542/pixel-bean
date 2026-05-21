@@ -1,6 +1,7 @@
 import type { MappedPixel, ColorSystem } from './types';
 import { TRANSPARENT_KEY } from './types';
 import { getDisplayKey, getContrastColor } from './palette';
+import { splitBoards, extractBoard, type BoardInfo } from './board-split';
 
 interface ColorEntry {
   hex: string;
@@ -20,6 +21,8 @@ interface FocusState {
   clickAbort: AbortController;
   resizeObserver: ResizeObserver;
   onExit: () => void;
+  boards: BoardInfo[] | null;
+  activeBoardIndex: number;
 }
 
 let state: FocusState | null = null;
@@ -119,6 +122,15 @@ function unmarkColor(colorEntry: ColorEntry): void {
   colorEntry.completed = 0;
 }
 
+function getViewGrid(): { grid: MappedPixel[][]; rowOffset: number; colOffset: number } {
+  if (!state) return { grid: [], rowOffset: 0, colOffset: 0 };
+  if (state.boards) {
+    const board = state.boards[state.activeBoardIndex];
+    return { grid: extractBoard(state.grid, board), rowOffset: board.rowStart, colOffset: board.colStart };
+  }
+  return { grid: state.grid, rowOffset: 0, colOffset: 0 };
+}
+
 export function isFocusActive(): boolean {
   return state !== null;
 }
@@ -130,11 +142,14 @@ export function redrawFocus(): void {
 export function enterFocusMode(
   grid: MappedPixel[][],
   system: ColorSystem,
-  onExit: () => void
+  onExit: () => void,
+  boardSize?: number
 ): boolean {
   if (state) return false;
   const colors = buildColorList(grid);
   if (colors.length === 0) return false;
+
+  const boards = boardSize ? splitBoards(grid.length, grid[0].length, boardSize) : null;
 
   // Create fullscreen overlay
   const overlay = document.createElement('div');
@@ -173,6 +188,8 @@ export function enterFocusMode(
     completedCells: new Set(),
     overlay, canvas, panel,
     clickAbort, resizeObserver, onExit,
+    boards,
+    activeBoardIndex: 0,
   };
 
   renderFocusUI();
@@ -199,11 +216,21 @@ function renderFocusUI(): void {
   const completedColors = colors.filter(c => c.completed >= c.total).length;
   const allDone = completedBeads >= totalBeads;
 
+  const { boards, activeBoardIndex } = state;
+  const boardLabel = boards ? boards[activeBoardIndex].label : '';
+
   panel.innerHTML = `
     <div class="focus-header">
       <h3>专注拼豆</h3>
       <button class="btn btn--sm" data-focus="exit">退出</button>
     </div>
+    ${boards ? `
+    <div class="focus-board-nav">
+      <button class="btn btn--sm" data-focus="board-prev" ${activeBoardIndex === 0 ? 'disabled' : ''}>◀</button>
+      <span class="focus-board-label">板块 ${boardLabel} (${activeBoardIndex + 1}/${boards.length})</span>
+      <button class="btn btn--sm" data-focus="board-next" ${activeBoardIndex >= boards.length - 1 ? 'disabled' : ''}>▶</button>
+    </div>
+    ` : ''}
     <div class="focus-progress-summary">
       <span>${completedColors}/${colors.length} 种颜色</span>
       <span>${completedBeads}/${totalBeads} 粒</span>
@@ -214,8 +241,8 @@ function renderFocusUI(): void {
     ${allDone ? '<div class="focus-done-msg">全部完成！</div>' : ''}
     <div class="focus-color-list"></div>
     <div class="focus-nav">
-      <button class="btn btn--sm" data-focus="prev" ${activeIndex === 0 ? 'disabled' : ''}>上一个</button>
-      <button class="btn btn--sm btn--primary" data-focus="next" ${allDone || activeIndex >= colors.length - 1 ? 'disabled' : ''}>下一个</button>
+      <button class="btn btn--sm" data-focus="prev" ${activeIndex === 0 ? 'disabled' : ''}>上一个颜色</button>
+      <button class="btn btn--sm btn--primary" data-focus="next" ${allDone || activeIndex >= colors.length - 1 ? 'disabled' : ''}>下一个颜色</button>
     </div>
   `;
 
@@ -292,6 +319,22 @@ function renderFocusUI(): void {
     }
   });
 
+  // Board nav buttons
+  panel.querySelector('[data-focus="board-prev"]')?.addEventListener('click', () => {
+    if (state && state.activeBoardIndex > 0) {
+      state.activeBoardIndex--;
+      renderFocusUI();
+      drawFocusCanvas();
+    }
+  });
+  panel.querySelector('[data-focus="board-next"]')?.addEventListener('click', () => {
+    if (state && state.boards && state.activeBoardIndex < state.boards.length - 1) {
+      state.activeBoardIndex++;
+      renderFocusUI();
+      drawFocusCanvas();
+    }
+  });
+
   const activeRow = list.querySelector('.focus-color-row.active');
   if (activeRow) activeRow.scrollIntoView({ block: 'nearest' });
 }
@@ -299,9 +342,12 @@ function renderFocusUI(): void {
 function drawFocusCanvas(): void {
   if (!state) return;
 
-  const { grid, colors, activeIndex, completedCells, system, canvas } = state;
-  const rows = grid.length;
-  const cols = grid[0].length;
+  const { colors, activeIndex, completedCells, system, canvas } = state;
+  const view = getViewGrid();
+  const viewGrid = view.grid;
+  const rows = viewGrid.length;
+  const cols = rows > 0 ? viewGrid[0].length : 0;
+  if (rows === 0 || cols === 0) return;
   const activeHex = colors[activeIndex].hex;
 
   // Calculate cell size to fill the canvas area (grandparent of canvas)
@@ -329,23 +375,23 @@ function drawFocusCanvas(): void {
   ctx.textBaseline = 'middle';
   for (let c = 0; c < cols; c++) {
     if (cellSize < 10 && c % 5 !== 0) continue;
-    ctx.fillText(String(c + 1), ox + c * cellSize + cellSize / 2, RULER_SIZE / 2);
+    ctx.fillText(String(c + 1 + view.colOffset), ox + c * cellSize + cellSize / 2, RULER_SIZE / 2);
   }
 
   // ── Row numbers (left) ──
   ctx.textAlign = 'right';
   for (let r = 0; r < rows; r++) {
     if (cellSize < 10 && r % 5 !== 0) continue;
-    ctx.fillText(String(r + 1), RULER_SIZE - 3, oy + r * cellSize + cellSize / 2);
+    ctx.fillText(String(r + 1 + view.rowOffset), RULER_SIZE - 3, oy + r * cellSize + cellSize / 2);
   }
 
   // ── Grid cells ──
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      const cell = grid[r][c];
+      const cell = viewGrid[r][c];
       const x = ox + c * cellSize;
       const y = oy + r * cellSize;
-      const key = cellKey(r, c);
+      const key = cellKey(r + view.rowOffset, c + view.colOffset);
       const isBlank = cell.isExternal || cell.paletteId === TRANSPARENT_KEY;
       const hex = isBlank ? '' : rgbToHex(cell.color.r, cell.color.g, cell.color.b);
       const isDone = completedCells.has(key);
@@ -398,9 +444,13 @@ function setupFocusCanvasClick(): void {
   canvas.addEventListener('click', (e: MouseEvent) => {
     if (!state) return;
 
-    const { grid, colors, activeIndex, completedCells } = state;
-    const rows = grid.length;
-    const cols = grid[0].length;
+    const { colors, activeIndex, completedCells } = state;
+    const view = getViewGrid();
+    const viewGrid = view.grid;
+    const rows = viewGrid.length;
+    const cols = rows > 0 ? viewGrid[0].length : 0;
+    if (rows === 0 || cols === 0) return;
+
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
@@ -413,17 +463,21 @@ function setupFocusCanvasClick(): void {
 
     if (row < 0 || row >= rows || col < 0 || col >= cols) return;
 
-    const cell = grid[row][col];
+    const cell = viewGrid[row][col];
     if (cell.isExternal || cell.paletteId === TRANSPARENT_KEY) return;
 
     const hex = rgbToHex(cell.color.r, cell.color.g, cell.color.b);
     const activeHex = colors[activeIndex].hex;
     if (hex !== activeHex) return;
 
-    const key = cellKey(row, col);
+    // Use global coordinates for completedCells
+    const globalRow = row + view.rowOffset;
+    const globalCol = col + view.colOffset;
+    const key = cellKey(globalRow, globalCol);
     if (completedCells.has(key)) return;
 
-    const region = getConnectedRegion(grid, row, col, activeHex, completedCells);
+    // Run flood fill on the full grid for correct cross-board connectivity
+    const region = getConnectedRegion(state.grid, globalRow, globalCol, activeHex, completedCells);
     for (const rk of region) {
       completedCells.add(rk);
     }
