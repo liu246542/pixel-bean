@@ -128,6 +128,20 @@ function send(ws: WebSocket, msg: object): void {
   }
 }
 
+const MAX_HISTORY = 50;
+
+function pruneHistory(): void {
+  try {
+    const files = fs.readdirSync(tmpDir)
+      .filter(f => f.startsWith('history-') && f.endsWith('.png'))
+      .sort()
+      .reverse();
+    for (let i = MAX_HISTORY; i < files.length; i++) {
+      fs.unlinkSync(path.join(tmpDir, files[i]));
+    }
+  } catch {}
+}
+
 async function handleGenerate(ws: WebSocket, image: string, prompt: string): Promise<void> {
   const uuid = crypto.randomUUID();
   const inputPath = path.join(tmpDir, `${uuid}-input.png`);
@@ -223,7 +237,14 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
     clearInterval(heartbeat);
     try { if (fs.existsSync(markerPath)) fs.unlinkSync(markerPath); } catch {}
     try { if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath); } catch {}
-    try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch {}
+    // Keep output as history instead of deleting
+    try {
+      if (fs.existsSync(outputPath)) {
+        const ts = new Date().toISOString().replace(/[:.]/g, '-');
+        fs.renameSync(outputPath, path.join(tmpDir, `history-${ts}.png`));
+      }
+    } catch {}
+    pruneHistory();
   }
 }
 
