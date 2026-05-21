@@ -293,10 +293,10 @@ function drawFocusCanvas(): void {
   const cols = grid[0].length;
   const activeHex = colors[activeIndex].hex;
 
-  // Calculate cell size to fill available space
-  const area = canvas.parentElement!;
-  const availW = area.clientWidth - RULER_SIZE;
-  const availH = area.clientHeight - RULER_SIZE;
+  // Calculate cell size to fill the canvas area (grandparent of canvas)
+  const area = canvas.closest('.focus-canvas-area') as HTMLElement;
+  const availW = area.clientWidth - RULER_SIZE - 24;
+  const availH = area.clientHeight - RULER_SIZE - 48;
   const cellSize = Math.max(6, Math.floor(Math.min(availW / cols, availH / rows)));
 
   canvas.width = cols * cellSize + RULER_SIZE;
