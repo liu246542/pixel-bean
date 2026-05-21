@@ -576,14 +576,17 @@ function setupCrosshair(): void {
     rafId = requestAnimationFrame(() => {
       const hit = hitToGrid(clientX, clientY);
       if (!hit) { clearCrosshair(); return; }
+
+      // Always update position so label follows cursor smoothly
+      const area = canvas.closest('.focus-canvas-area') as HTMLElement;
+      const areaRect = area.getBoundingClientRect();
+      coordLabel.style.left = `${clientX - areaRect.left + area.scrollLeft + 16}px`;
+      coordLabel.style.top = `${clientY - areaRect.top + area.scrollTop - 12}px`;
+
       if (hit.row === lastRow && hit.col === lastCol) return;
       lastRow = hit.row; lastCol = hit.col;
       drawCrosshair(hit.row, hit.col);
       coordLabel.textContent = `R${hit.row + 1} C${hit.col + 1}`;
-      const area = canvas.closest('.focus-canvas-area') as HTMLElement;
-      const areaRect = area.getBoundingClientRect();
-      coordLabel.style.left = `${clientX - areaRect.left + 16}px`;
-      coordLabel.style.top = `${clientY - areaRect.top - 12}px`;
       coordLabel.classList.remove('hidden');
     });
   }
