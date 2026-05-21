@@ -12,11 +12,20 @@ const CJK_RE = /[^\x00-\x7F]/;
 
 function pdfSafeKey(hex: string, system: ColorSystem): string {
   const key = getDisplayKey(hex, system);
-  if (key === '?' || CJK_RE.test(key)) {
+  if (key === '?') return hex.slice(1, 5);
+  if (CJK_RE.test(key)) {
+    // Color codes themselves are ASCII (E2, S4, 65), this shouldn't happen
+    // but fall back to MARD if it does
     return getDisplayKey(hex, 'MARD') !== '?' ? getDisplayKey(hex, 'MARD') : hex.slice(1, 5);
   }
   return key;
 }
+
+const SYSTEM_PDF_NAME: Record<string, string> = {
+  '漫漫': 'Manman',
+  '盼盼': 'Panpan',
+  '咪小窝': 'Mixiaowo',
+};
 
 export function exportPdf(
   grid: MappedPixel[][],
@@ -39,8 +48,8 @@ export function exportPdf(
   doc.setFontSize(14);
   doc.text('Pixel Bean — Bead Pattern', margin, margin + 4);
   doc.setFontSize(8);
-  const cjkNote = CJK_RE.test(system) ? ` (PDF fallback: MARD)` : '';
-  doc.text(`${cols} x ${rows}  |  ${system}${cjkNote}`, margin, margin + 9);
+  const pdfSystem = SYSTEM_PDF_NAME[system] ?? system;
+  doc.text(`${cols} x ${rows}  |  ${pdfSystem}`, margin, margin + 9);
 
   const overviewW = pageW - margin * 2;
   const overviewH = pageH - margin * 2 - 15;
