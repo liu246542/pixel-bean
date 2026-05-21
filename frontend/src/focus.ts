@@ -18,6 +18,7 @@ interface FocusState {
   canvas: HTMLCanvasElement;
   panel: HTMLElement;
   clickAbort: AbortController;
+  resizeObserver: ResizeObserver;
   onExit: () => void;
 }
 
@@ -147,13 +148,16 @@ export function enterFocusMode(
   const canvas = overlay.querySelector('.focus-canvas') as HTMLCanvasElement;
   const panel = overlay.querySelector('.focus-sidebar') as HTMLElement;
   const clickAbort = new AbortController();
+  const canvasArea = overlay.querySelector('.focus-canvas-area') as HTMLElement;
+  const resizeObserver = new ResizeObserver(() => drawFocusCanvas());
+  resizeObserver.observe(canvasArea);
 
   state = {
     grid, system, colors,
     activeIndex: 0,
     completedCells: new Set(),
     overlay, canvas, panel,
-    clickAbort, onExit,
+    clickAbort, resizeObserver, onExit,
   };
 
   renderFocusUI();
@@ -165,6 +169,7 @@ export function enterFocusMode(
 export function exitFocusMode(): void {
   if (!state) return;
   state.clickAbort.abort();
+  state.resizeObserver.disconnect();
   state.overlay.remove();
   state = null;
 }
@@ -176,6 +181,7 @@ function renderFocusUI(): void {
   const totalBeads = colors.reduce((s, c) => s + c.total, 0);
   const completedBeads = colors.reduce((s, c) => s + c.completed, 0);
   const completedColors = colors.filter(c => c.completed >= c.total).length;
+  const allDone = completedBeads >= totalBeads;
 
   panel.innerHTML = `
     <div class="focus-header">
@@ -189,10 +195,11 @@ function renderFocusUI(): void {
     <div class="focus-progress-bar">
       <div class="focus-progress-fill" style="width:${totalBeads ? (completedBeads / totalBeads * 100) : 0}%"></div>
     </div>
+    ${allDone ? '<div class="focus-done-msg">全部完成！</div>' : ''}
     <div class="focus-color-list"></div>
     <div class="focus-nav">
       <button class="btn btn--sm" data-focus="prev" ${activeIndex === 0 ? 'disabled' : ''}>上一个</button>
-      <button class="btn btn--sm btn--primary" data-focus="next" ${activeIndex >= colors.length - 1 ? 'disabled' : ''}>下一个</button>
+      <button class="btn btn--sm btn--primary" data-focus="next" ${allDone || activeIndex >= colors.length - 1 ? 'disabled' : ''}>下一个</button>
     </div>
   `;
 

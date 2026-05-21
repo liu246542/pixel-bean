@@ -534,10 +534,10 @@ function bindCsvEvents(): void {
 function bindFocusEvents(): void {
   $focusBtn.addEventListener('click', () => {
     if (grid.length === 0 || isFocusActive()) return;
-    enterFocusMode(grid, currentSystem, () => {
+    const ok = enterFocusMode(grid, currentSystem, () => {
       $focusBtn.disabled = false;
     });
-    $focusBtn.disabled = true;
+    if (ok) $focusBtn.disabled = true;
   });
 }
 

@@ -576,6 +576,15 @@ a:hover {
 .focus-layout {
   display: flex;
   height: 100vh;
+  height: 100dvh;
+}
+
+.focus-done-msg {
+  text-align: center;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--success);
+  padding: 12px 0;
 }
 
 .focus-canvas-area {
@@ -729,6 +738,14 @@ a:hover {
     border-left: none;
     border-top: 1px solid var(--border);
     max-height: 40vh;
+  }
+  .focus-color-row {
+    padding: 8px 6px;
+    min-height: 44px;
+  }
+  .focus-checkbox {
+    width: 20px;
+    height: 20px;
   }
 }
 
