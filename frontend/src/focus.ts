@@ -4,7 +4,6 @@ import { getDisplayKey, getContrastColor } from './palette';
 
 interface ColorEntry {
   hex: string;
-  rgb: { r: number; g: number; b: number };
   total: number;
   completed: number;
 }
@@ -12,9 +11,13 @@ interface ColorEntry {
 interface FocusState {
   grid: MappedPixel[][];
   system: ColorSystem;
+  canvas: HTMLCanvasElement;
+  container: HTMLElement;
   colors: ColorEntry[];
   activeIndex: number;
   completedCells: Set<string>;
+  clickAbort: AbortController;
+  onExit: () => void;
 }
 
 let state: FocusState | null = null;
@@ -59,7 +62,7 @@ function getConnectedRegion(
   return region;
 }
 
-export function buildColorList(grid: MappedPixel[][]): ColorEntry[] {
+function buildColorList(grid: MappedPixel[][]): ColorEntry[] {
   const map = new Map<string, ColorEntry>();
   for (const row of grid) {
     for (const cell of row) {
@@ -69,51 +72,64 @@ export function buildColorList(grid: MappedPixel[][]): ColorEntry[] {
       if (entry) {
         entry.total++;
       } else {
-        map.set(hex, { hex, rgb: { ...cell.color }, total: 1, completed: 0 });
+        map.set(hex, { hex, total: 1, completed: 0 });
       }
     }
   }
   return Array.from(map.values()).sort((a, b) => b.total - a.total);
 }
 
-export function enterFocusMode(
-  grid: MappedPixel[][],
-  system: ColorSystem,
-  canvas: HTMLCanvasElement,
-  container: HTMLElement
-): void {
-  const colors = buildColorList(grid);
-  if (colors.length === 0) return;
-
-  state = {
-    grid,
-    system,
-    colors,
-    activeIndex: 0,
-    completedCells: new Set(),
-  };
-
-  renderFocusUI(container);
-  drawFocusCanvas(canvas);
-  setupFocusCanvasClick(canvas);
-}
-
-export function exitFocusMode(container: HTMLElement): void {
-  state = null;
-  container.innerHTML = '';
-}
-
 export function isFocusActive(): boolean {
   return state !== null;
 }
 
-function renderFocusUI(container: HTMLElement): void {
+export function enterFocusMode(
+  grid: MappedPixel[][],
+  system: ColorSystem,
+  canvas: HTMLCanvasElement,
+  container: HTMLElement,
+  onExit: () => void
+): boolean {
+  if (state) return false;
+
+  const colors = buildColorList(grid);
+  if (colors.length === 0) return false;
+
+  const clickAbort = new AbortController();
+
+  state = {
+    grid,
+    system,
+    canvas,
+    container,
+    colors,
+    activeIndex: 0,
+    completedCells: new Set(),
+    clickAbort,
+    onExit,
+  };
+
+  renderFocusUI();
+  drawFocusCanvas();
+  setupFocusCanvasClick();
+  return true;
+}
+
+export function exitFocusMode(): void {
+  if (!state) return;
+  state.clickAbort.abort();
+  state.container.innerHTML = '';
+  state = null;
+}
+
+function renderFocusUI(): void {
   if (!state) return;
 
-  const { colors, activeIndex, system } = state;
+  const { colors, activeIndex, system, container } = state;
   const totalBeads = colors.reduce((s, c) => s + c.total, 0);
   const completedBeads = colors.reduce((s, c) => s + c.completed, 0);
   const completedColors = colors.filter(c => c.completed >= c.total).length;
+  const allDone = completedBeads >= totalBeads;
 
   container.innerHTML = `
     <div class="focus-header">
@@ -128,9 +144,14 @@ function renderFocusUI(container: HTMLElement): void {
     <div class="focus-color-list"></div>
     <div class="focus-nav">
       <button class="btn btn--sm" data-focus="prev" ${activeIndex === 0 ? 'disabled' : ''}>上一个</button>
-      <button class="btn btn--sm btn--primary" data-focus="next">${activeIndex >= colors.length - 1 ? '完成' : '下一个颜色'}</button>
+      <button class="btn btn--sm btn--primary" data-focus="next">${allDone ? '全部完成！' : activeIndex >= colors.length - 1 ? '已是最后一个' : '下一个颜色'}</button>
     </div>
   `;
+
+  if (allDone) {
+    const nextBtn = container.querySelector('[data-focus="next"]') as HTMLButtonElement;
+    nextBtn.disabled = true;
+  }
 
   const list = container.querySelector('.focus-color-list')!;
   colors.forEach((c, i) => {
@@ -141,6 +162,7 @@ function renderFocusUI(container: HTMLElement): void {
 
     const row = document.createElement('div');
     row.className = 'focus-color-row' + (active ? ' active' : '') + (done ? ' done' : '');
+    row.tabIndex = 0;
     row.innerHTML = `
       <span class="color-swatch" style="background:${c.hex}"></span>
       <span class="focus-color-key">${key}</span>
@@ -151,8 +173,8 @@ function renderFocusUI(container: HTMLElement): void {
     row.addEventListener('click', () => {
       if (state) {
         state.activeIndex = i;
-        renderFocusUI(container);
-        drawFocusCanvas(container.closest('.layout')!.querySelector('#previewCanvas')!);
+        renderFocusUI();
+        drawFocusCanvas();
       }
     });
     list.appendChild(row);
@@ -161,8 +183,8 @@ function renderFocusUI(container: HTMLElement): void {
   container.querySelector('[data-focus="prev"]')!.addEventListener('click', () => {
     if (state && state.activeIndex > 0) {
       state.activeIndex--;
-      renderFocusUI(container);
-      drawFocusCanvas(container.closest('.layout')!.querySelector('#previewCanvas')!);
+      renderFocusUI();
+      drawFocusCanvas();
     }
   });
 
@@ -170,20 +192,19 @@ function renderFocusUI(container: HTMLElement): void {
     if (!state) return;
     if (state.activeIndex < state.colors.length - 1) {
       state.activeIndex++;
-      renderFocusUI(container);
-      drawFocusCanvas(container.closest('.layout')!.querySelector('#previewCanvas')!);
+      renderFocusUI();
+      drawFocusCanvas();
     }
   });
 
-  // Scroll active row into view
   const activeRow = list.querySelector('.focus-color-row.active');
   if (activeRow) activeRow.scrollIntoView({ block: 'nearest' });
 }
 
-export function drawFocusCanvas(canvas: HTMLCanvasElement): void {
+function drawFocusCanvas(): void {
   if (!state) return;
 
-  const { grid, colors, activeIndex, completedCells, system } = state;
+  const { grid, colors, activeIndex, completedCells, system, canvas } = state;
   const rows = grid.length;
   const cols = grid[0].length;
   const activeHex = colors[activeIndex].hex;
@@ -221,12 +242,10 @@ export function drawFocusCanvas(canvas: HTMLCanvasElement): void {
       ctx.fillRect(x, y, cellSize, cellSize);
       ctx.globalAlpha = 1;
 
-      // Grid line
       ctx.strokeStyle = 'rgba(0,0,0,0.08)';
       ctx.lineWidth = 0.5;
       ctx.strokeRect(x, y, cellSize, cellSize);
 
-      // Label on active cells
       if (isActive && !isDone && cellSize >= 14) {
         const label = getDisplayKey(hex, system);
         ctx.fillStyle = getContrastColor(hex);
@@ -236,7 +255,6 @@ export function drawFocusCanvas(canvas: HTMLCanvasElement): void {
         ctx.fillText(label, x + cellSize / 2, y + cellSize / 2);
       }
 
-      // Checkmark on completed
       if (isDone && !isBlank && cellSize >= 10) {
         ctx.fillStyle = 'rgba(40,167,69,0.7)';
         ctx.font = `${Math.floor(cellSize * 0.5)}px sans-serif`;
@@ -248,12 +266,12 @@ export function drawFocusCanvas(canvas: HTMLCanvasElement): void {
   }
 }
 
-function setupFocusCanvasClick(canvas: HTMLCanvasElement): void {
-  const handler = (e: MouseEvent) => {
-    if (!state) {
-      canvas.removeEventListener('click', handler);
-      return;
-    }
+function setupFocusCanvasClick(): void {
+  if (!state) return;
+  const { canvas, clickAbort } = state;
+
+  canvas.addEventListener('click', (e: MouseEvent) => {
+    if (!state) return;
 
     const { grid, colors, activeIndex, completedCells } = state;
     const rows = grid.length;
@@ -279,18 +297,13 @@ function setupFocusCanvasClick(canvas: HTMLCanvasElement): void {
     const key = cellKey(row, col);
     if (completedCells.has(key)) return;
 
-    // Mark entire connected region as completed
     const region = getConnectedRegion(grid, row, col, activeHex, completedCells);
     for (const rk of region) {
       completedCells.add(rk);
     }
     colors[activeIndex].completed += region.length;
 
-    // Re-render
-    const container = canvas.closest('.layout')!.querySelector('#focusPanel') as HTMLElement;
-    if (container) renderFocusUI(container);
-    drawFocusCanvas(canvas);
-  };
-
-  canvas.addEventListener('click', handler);
+    renderFocusUI();
+    drawFocusCanvas();
+  }, { signal: clickAbort.signal });
 }

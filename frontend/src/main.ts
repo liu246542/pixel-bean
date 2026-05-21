@@ -24,7 +24,7 @@ import {
 } from './ai-client';
 import type { AIServiceConfig } from './ai-client';
 import { showCropModal } from './crop';
-import { enterFocusMode, exitFocusMode } from './focus';
+import { enterFocusMode, exitFocusMode, isFocusActive } from './focus';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -467,22 +467,26 @@ function bindExportEvents(): void {
 
 // ── Focus mode ──────────────────────────────────────────────────────────────
 
+function leaveFocusMode(): void {
+  exitFocusMode();
+  $focusPanel.classList.add('hidden');
+  $focusExitBar.classList.add('hidden');
+  $focusBtn.disabled = false;
+  drawPreview($previewCanvas, grid, currentSystem);
+}
+
 function bindFocusEvents(): void {
   $focusBtn.addEventListener('click', () => {
-    if (grid.length === 0) return;
-    // Hide normal UI, show focus UI
-    $focusPanel.classList.remove('hidden');
-    $focusExitBar.classList.remove('hidden');
-    enterFocusMode(grid, currentSystem, $previewCanvas, $focusPanel);
+    if (grid.length === 0 || isFocusActive()) return;
+    const ok = enterFocusMode(grid, currentSystem, $previewCanvas, $focusPanel, leaveFocusMode);
+    if (ok) {
+      $focusPanel.classList.remove('hidden');
+      $focusExitBar.classList.remove('hidden');
+      $focusBtn.disabled = true;
+    }
   });
 
-  $focusExit.addEventListener('click', () => {
-    exitFocusMode($focusPanel);
-    $focusPanel.classList.add('hidden');
-    $focusExitBar.classList.add('hidden');
-    // Restore normal preview
-    drawPreview($previewCanvas, grid, currentSystem);
-  });
+  $focusExit.addEventListener('click', leaveFocusMode);
 }
 
 // ── AI integration ──────────────────────────────────────────────────────────
