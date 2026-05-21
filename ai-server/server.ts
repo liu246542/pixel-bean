@@ -137,6 +137,10 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
     const codexHome = process.env.CODEX_HOME || path.join(process.env.HOME || '', '.codex');
     const genDir = path.join(codexHome, 'generated_images');
 
+    // Create a timestamp marker for find -newer (used when codex saves elsewhere)
+    const markerPath = path.join(tmpDir, `${uuid}-marker`);
+    fs.writeFileSync(markerPath, '');
+
     let codexPrompt: string;
 
     if (hasImage) {
@@ -152,7 +156,7 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
     send(ws, { type: 'progress', text: '正在调用 Codex 生成图片...' });
 
     // Spawn codex as child process to stream output
-    const result = await new Promise<string>((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const child = spawn('/bin/bash', ['-c', 'echo "$CODEX_PROMPT" | codex exec -'], {
         cwd: tmpDir,
         env: { ...process.env, CODEX_PROMPT: codexPrompt },
@@ -164,12 +168,8 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
         reject(new Error('Codex timed out after 10 minutes'));
       }, 600_000);
 
-      let stdout = '';
-
       child.stdout.on('data', (chunk: Buffer) => {
         const text = chunk.toString();
-        stdout += text;
-        // Forward meaningful lines to frontend
         for (const line of text.split('\n')) {
           const trimmed = line.trim();
           if (trimmed && trimmed.length > 2) {
@@ -178,14 +178,11 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
         }
       });
 
-      child.stderr.on('data', (chunk: Buffer) => {
-        stdout += chunk.toString();
-      });
+      child.stderr.on('data', () => {});
 
-      child.on('close', (code) => {
+      child.on('close', () => {
         clearTimeout(timeout);
-        // Codex may exit non-zero even when it produced output — always resolve
-        resolve(stdout);
+        resolve();
       });
 
       child.on('error', (err) => {
@@ -201,7 +198,7 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
     if (fs.existsSync(outputPath)) {
       outputBuffer = fs.readFileSync(outputPath);
     } else {
-      const findCmd = `find "${genDir}" -name '*.png' -newer "${inputPath}" -printf '%T@ %p\\n' 2>/dev/null | sort -nr | head -1 | cut -d' ' -f2-`;
+      const findCmd = `find "${genDir}" -name '*.png' -newer "${markerPath}" -printf '%T@ %p\\n' 2>/dev/null | sort -nr | head -1 | cut -d' ' -f2-`;
       const newest = execSync(findCmd, { encoding: 'utf-8' }).trim();
       if (!newest || !fs.existsSync(newest)) {
         throw new Error('Codex did not produce an output image');
@@ -215,6 +212,7 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
     const message = err instanceof Error ? err.message : String(err);
     send(ws, { type: 'error', error: message });
   } finally {
+    try { if (fs.existsSync(markerPath)) fs.unlinkSync(markerPath); } catch {}
     try { if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath); } catch {}
     try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch {}
     ws.close();

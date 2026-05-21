@@ -110,6 +110,8 @@ function init(): void {
   aiConfig = loadConfig();
   if (aiConfig) {
     $aiUrl.value = `${aiConfig.url}?token=${aiConfig.token}`;
+    $aiActions.classList.remove('hidden');
+    $aiPromptWrap.classList.remove('hidden');
   }
 
   // Bind events
@@ -154,7 +156,7 @@ function loadImageFile(file: File): void {
   reader.onload = () => {
     imageSrc = reader.result as string;
     originalImageSrc = imageSrc;
-    $uploadArea.classList.add('hidden');
+    $uploadArea.querySelector('span')!.textContent = '重新上传';
     processImage();
   };
   reader.readAsDataURL(file);
@@ -495,7 +497,9 @@ function bindAiEvents(): void {
       $aiStatus.textContent = 'Connection failed';
       $aiStatus.className = 'ai-status error';
       aiConfig = null;
+      aiMode = null;
       $aiActions.classList.add('hidden');
+      $aiPromptWrap.classList.add('hidden');
     }
   });
 
@@ -571,7 +575,7 @@ function bindAiEvents(): void {
     if (result.success && result.image) {
       imageSrc = result.image.startsWith('data:') ? result.image : `data:image/png;base64,${result.image}`;
       originalImageSrc = imageSrc;
-      $uploadArea.classList.add('hidden');
+      $uploadArea.querySelector('span')!.textContent = '重新上传';
       processImage();
     } else {
       alert(result.error ?? 'AI 生成失败');
