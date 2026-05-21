@@ -152,6 +152,13 @@ function init(): void {
     $focusBtn.disabled = false;
     $editToggle.classList.remove('hidden');
   }
+
+  // Redraw canvas when returning from background (browsers may discard canvas content)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && grid.length > 0) {
+      drawPreview($previewCanvas, grid, currentSystem);
+    }
+  });
 }
 
 // ── Image upload ────────────────────────────────────────────────────────────
