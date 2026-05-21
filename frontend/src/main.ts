@@ -184,7 +184,9 @@ function init(): void {
     grid = restoreGrid(saved);
     currentSystem = saved.system;
     $granularity.value = String(saved.granularity);
+    syncPresetState('granularityPresets', $granularity.value);
     $mergeThreshold.value = String(saved.mergeThreshold);
+    syncPresetState('mergePresets', $mergeThreshold.value);
     $pixelMode.value = saved.mode;
     $colorSystem.value = saved.system;
     redrawPreview();
@@ -265,16 +267,22 @@ function processImage(): void {
     const imageData = ctx.getImageData(0, 0, img.width, img.height);
 
     // Calculate grid dimensions
-    const cols = parseInt($granularity.value, 10);
+    let cols = parseInt($granularity.value, 10);
+    if (!cols || cols < 10) cols = 10;
+    if (cols > 200) cols = 200;
+    $granularity.value = String(cols);
+
+    let threshold = parseInt($mergeThreshold.value, 10);
+    if (isNaN(threshold) || threshold < 0) threshold = 0;
+    if (threshold > 100) threshold = 100;
+    $mergeThreshold.value = String(threshold);
+
     const rows = Math.max(1, Math.round(cols * (img.height / img.width)));
 
-    // Build active palette: filter out excluded colors, convert to current system
     const activePalette = getActivePalette();
     const fallback = activePalette[0];
 
-    // Pixelation pipeline
     const mode = $pixelMode.value as PixelationMode;
-    const threshold = parseInt($mergeThreshold.value, 10);
 
     grid = pixelate(imageData, cols, rows, activePalette, mode, fallback);
     mergeColors(grid, threshold);
@@ -403,6 +411,14 @@ function toggleColorExclusion(hex: string): void {
 }
 
 // ── Settings events ─────────────────────────────────────────────────────────
+
+function syncPresetState(groupId: string, val: string): void {
+  const group = document.getElementById(groupId);
+  if (!group) return;
+  group.querySelectorAll('.preset-btn').forEach(b => {
+    b.classList.toggle('active', (b as HTMLElement).dataset.val === val);
+  });
+}
 
 function bindPresetGroup(groupId: string, input: HTMLInputElement): void {
   const group = document.getElementById(groupId);
