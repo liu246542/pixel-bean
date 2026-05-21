@@ -25,7 +25,7 @@ import {
 import type { AIServiceConfig } from './ai-client';
 import { showCropModal } from './crop';
 import { autoSave, autoLoad, restoreGrid, exportCsv, importCsv } from './storage';
-import { enterFocusMode, isFocusActive } from './focus';
+import { enterFocusMode, isFocusActive, redrawFocus } from './focus';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -156,7 +156,11 @@ function init(): void {
   // Redraw canvas when returning from background (browsers may discard canvas content)
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && grid.length > 0) {
-      drawPreview($previewCanvas, grid, currentSystem);
+      if (isFocusActive()) {
+        redrawFocus();
+      } else {
+        drawPreview($previewCanvas, grid, currentSystem);
+      }
     }
   });
 }

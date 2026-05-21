@@ -123,6 +123,10 @@ export function isFocusActive(): boolean {
   return state !== null;
 }
 
+export function redrawFocus(): void {
+  if (state) drawFocusCanvas();
+}
+
 export function enterFocusMode(
   grid: MappedPixel[][],
   system: ColorSystem,
@@ -303,7 +307,7 @@ function drawFocusCanvas(): void {
   // Calculate cell size to fill the canvas area (grandparent of canvas)
   const area = canvas.closest('.focus-canvas-area') as HTMLElement;
   const availW = area.clientWidth - RULER_SIZE - 24;
-  const availH = area.clientHeight - RULER_SIZE - 48;
+  const availH = area.clientHeight - RULER_SIZE - 24;
   const cellSize = Math.max(6, Math.floor(Math.min(availW / cols, availH / rows)));
 
   canvas.width = cols * cellSize + RULER_SIZE;
