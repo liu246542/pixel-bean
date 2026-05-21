@@ -79,9 +79,17 @@ export function generateImage(
       return;
     }
 
+    let resolved = false;
+    const done = (result: AIResult) => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeout);
+      resolve(result);
+    };
+
     const timeout = setTimeout(() => {
       ws.close();
-      resolve({ success: false, error: 'Timed out waiting for AI response' });
+      done({ success: false, error: 'Timed out waiting for AI response' });
     }, 660_000);
 
     ws.onopen = () => {
@@ -100,23 +108,20 @@ export function generateImage(
       if (msg.type === 'progress' && msg.text) {
         onProgress?.(msg.text);
       } else if (msg.type === 'done') {
-        clearTimeout(timeout);
         ws.close();
-        resolve({ success: true, image: msg.image });
+        done({ success: true, image: msg.image });
       } else if (msg.type === 'error') {
-        clearTimeout(timeout);
         ws.close();
-        resolve({ success: false, error: msg.error });
+        done({ success: false, error: msg.error });
       }
     };
 
     ws.onerror = () => {
-      clearTimeout(timeout);
-      resolve({ success: false, error: 'WebSocket connection error' });
+      done({ success: false, error: 'WebSocket connection error' });
     };
 
     ws.onclose = () => {
-      clearTimeout(timeout);
+      done({ success: false, error: 'Connection closed unexpectedly' });
     };
   });
 }

@@ -87,7 +87,6 @@ wss.on('connection', (ws: WebSocket, req: http.IncomingMessage) => {
 
   if (!validateTokenFromUrl(url)) {
     ws.send(JSON.stringify({ type: 'error', error: 'Unauthorized' }));
-    ws.close();
     return;
   }
 
@@ -102,14 +101,12 @@ wss.on('connection', (ws: WebSocket, req: http.IncomingMessage) => {
       parsed = JSON.parse(data.toString());
     } catch {
       ws.send(JSON.stringify({ type: 'error', error: 'Invalid JSON' }));
-      ws.close();
       return;
     }
 
     const { image, prompt } = parsed;
     if (!prompt) {
       ws.send(JSON.stringify({ type: 'error', error: 'Missing prompt' }));
-      ws.close();
       return;
     }
 
