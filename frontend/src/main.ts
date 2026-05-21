@@ -700,6 +700,7 @@ function bindAiEvents(): void {
 
     if (result.success && result.image) {
       imageSrc = result.image.startsWith('data:') ? result.image : `data:image/png;base64,${result.image}`;
+      originalImageSrc = imageSrc;
       processImage();
     } else {
       alert(result.error ?? 'AI 优化失败');
