@@ -110,7 +110,11 @@ wss.on('connection', (ws: WebSocket, req: http.IncomingMessage) => {
       return;
     }
 
+    const queueHeartbeat = setInterval(() => {
+      send(ws, { type: 'progress', text: '排队中...' });
+    }, 20_000);
     queue = queue.then(() => {
+      clearInterval(queueHeartbeat);
       send(ws, { type: 'progress', text: '开始处理...' });
       return handleGenerate(ws, image, prompt);
     });
@@ -216,11 +220,10 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
     const message = err instanceof Error ? err.message : String(err);
     send(ws, { type: 'error', error: message });
   } finally {
+    clearInterval(heartbeat);
     try { if (fs.existsSync(markerPath)) fs.unlinkSync(markerPath); } catch {}
     try { if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath); } catch {}
     try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch {}
-    // Don't close WebSocket from server — let client close after receiving
-    // the done/error message. This prevents data loss through reverse proxies.
   }
 }
 

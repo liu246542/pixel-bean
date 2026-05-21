@@ -153,7 +153,7 @@ function init(): void {
     $mergeVal.textContent = String(saved.mergeThreshold);
     $pixelMode.value = saved.mode;
     $colorSystem.value = saved.system;
-    drawPreview($previewCanvas, grid, currentSystem);
+    redrawPreview();
     updateColorStats();
     $saveBtn.disabled = false;
     $exportGrid.disabled = false;
@@ -170,7 +170,7 @@ function init(): void {
       if (isFocusActive()) {
         redrawFocus();
       } else {
-        drawPreview($previewCanvas, grid, currentSystem);
+        redrawPreview();
       }
     }
   });
@@ -246,8 +246,7 @@ function processImage(): void {
     mergeColors(grid, threshold);
     removeIsolatedNoise(grid);
     markBackground(grid);
-    drawPreview($previewCanvas, grid, currentSystem);
-    refreshBoardOverlay();
+    redrawPreview();
     updateColorStats();
 
     // Show original image preview
@@ -364,7 +363,7 @@ function toggleColorExclusion(hex: string): void {
     const activePalette = getActivePalette();
     remapExcludedColors(grid, excludedHexes, activePalette);
     markBackground(grid);
-    drawPreview($previewCanvas, grid, currentSystem);
+    redrawPreview();
     updateColorStats();
   }
 }
@@ -391,8 +390,7 @@ function bindSettingsEvents(): void {
   $colorSystem.addEventListener('change', () => {
     currentSystem = $colorSystem.value as ColorSystem;
     if (grid.length > 0) {
-      drawPreview($previewCanvas, grid, currentSystem);
-      refreshBoardOverlay();
+      redrawPreview();
       updateColorStats();
     }
   });
@@ -401,22 +399,21 @@ function bindSettingsEvents(): void {
   $boardSplitToggle.addEventListener('change', () => {
     $boardSize.disabled = !$boardSplitToggle.checked;
     if (grid.length > 0) {
-      drawPreview($previewCanvas, grid, currentSystem);
-      refreshBoardOverlay();
+      redrawPreview();
     }
   });
   $boardSize.addEventListener('change', () => {
     if (grid.length > 0 && $boardSplitToggle.checked) {
-      drawPreview($previewCanvas, grid, currentSystem);
-      refreshBoardOverlay();
+      redrawPreview();
     }
   });
 }
 
-function refreshBoardOverlay(): void {
-  if ($boardSplitToggle.checked && grid.length > 0) {
-    const size = parseInt($boardSize.value);
-    drawBoardSplitOverlay($previewCanvas, grid.length, grid[0].length, size);
+function redrawPreview(): void {
+  if (grid.length === 0) return;
+  drawPreview($previewCanvas, grid, currentSystem);
+  if ($boardSplitToggle.checked) {
+    drawBoardSplitOverlay($previewCanvas, grid.length, grid[0].length, parseInt($boardSize.value));
   }
 }
 
@@ -480,7 +477,7 @@ function bindEditEvents(): void {
     const prev = editHistory.undo();
     if (prev) {
       grid = prev;
-      drawPreview($previewCanvas, grid, currentSystem);
+      redrawPreview();
       updateColorStats();
       updateUndoRedoButtons();
     }
@@ -490,7 +487,7 @@ function bindEditEvents(): void {
     const next = editHistory.redo();
     if (next) {
       grid = next;
-      drawPreview($previewCanvas, grid, currentSystem);
+      redrawPreview();
       updateColorStats();
       updateUndoRedoButtons();
     }
@@ -503,7 +500,7 @@ function bindEditEvents(): void {
 
     hit.cell.color = { ...editColor.rgb };
     hit.cell.paletteId = editColor.hex;
-    drawPreview($previewCanvas, grid, currentSystem);
+    redrawPreview();
     updateColorStats();
     editHistory.push(grid);
     updateUndoRedoButtons();
@@ -598,7 +595,7 @@ function bindCsvEvents(): void {
       grid = await importCsv(file);
       imageSrc = null;
       originalImageSrc = null;
-      drawPreview($previewCanvas, grid, currentSystem);
+      redrawPreview();
       updateColorStats();
       $saveBtn.disabled = false;
     $exportGrid.disabled = false;
