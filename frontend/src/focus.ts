@@ -579,7 +579,11 @@ function setupCrosshair(): void {
       if (hit.row === lastRow && hit.col === lastCol) return;
       lastRow = hit.row; lastCol = hit.col;
       drawCrosshair(hit.row, hit.col);
-      coordLabel.textContent = `第 ${hit.row + 1} 行  第 ${hit.col + 1} 列`;
+      coordLabel.textContent = `R${hit.row + 1} C${hit.col + 1}`;
+      const area = canvas.closest('.focus-canvas-area') as HTMLElement;
+      const areaRect = area.getBoundingClientRect();
+      coordLabel.style.left = `${clientX - areaRect.left + 16}px`;
+      coordLabel.style.top = `${clientY - areaRect.top - 12}px`;
       coordLabel.classList.remove('hidden');
     });
   }
