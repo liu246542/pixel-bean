@@ -391,6 +391,10 @@ a:hover {
   margin-left: 4px;
 }
 
+.import-csv-label {
+  cursor: pointer;
+}
+
 /* ── Color list ─────────────────────────────────────────────────────────── */
 .color-list {
   max-height: 400px;

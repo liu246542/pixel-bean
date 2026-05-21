@@ -24,6 +24,7 @@ import {
 } from './ai-client';
 import type { AIServiceConfig } from './ai-client';
 import { showCropModal } from './crop';
+import { autoSave, autoLoad, restoreGrid, exportCsv, importCsv } from './storage';
 import { enterFocusMode, exitFocusMode, isFocusActive } from './focus';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -79,6 +80,8 @@ const $colorList = document.getElementById('colorList') as HTMLDivElement;
 
 const $exportGrid = document.getElementById('exportGrid') as HTMLButtonElement;
 const $exportStats = document.getElementById('exportStats') as HTMLButtonElement;
+const $exportCsv = document.getElementById('exportCsv') as HTMLButtonElement;
+const $importCsv = document.getElementById('importCsv') as HTMLInputElement;
 const $focusBtn = document.getElementById('focusBtn') as HTMLButtonElement;
 const $focusPanel = document.getElementById('focusPanel') as HTMLDivElement;
 const $focusExitBar = document.getElementById('focusExitBar') as HTMLDivElement;
@@ -126,8 +129,29 @@ function init(): void {
   bindPreviewEvents();
   bindEditEvents();
   bindExportEvents();
+  bindCsvEvents();
   bindFocusEvents();
   bindAiEvents();
+
+  // Auto-restore last session
+  const saved = autoLoad();
+  if (saved) {
+    grid = restoreGrid(saved);
+    currentSystem = saved.system;
+    $granularity.value = String(saved.granularity);
+    $granularityVal.textContent = String(saved.granularity);
+    $mergeThreshold.value = String(saved.mergeThreshold);
+    $mergeVal.textContent = String(saved.mergeThreshold);
+    $pixelMode.value = saved.mode;
+    $colorSystem.value = saved.system;
+    drawPreview($previewCanvas, grid, currentSystem);
+    updateColorStats();
+    $exportGrid.disabled = false;
+    $exportStats.disabled = false;
+    $exportCsv.disabled = false;
+    $focusBtn.disabled = false;
+    $editToggle.classList.remove('hidden');
+  }
 }
 
 // ── Image upload ────────────────────────────────────────────────────────────
@@ -201,6 +225,7 @@ function processImage(): void {
     markBackground(grid);
     drawPreview($previewCanvas, grid, currentSystem);
     updateColorStats();
+    autoSave(grid, currentSystem, mode, cols, threshold);
 
     // Show original image preview
     $originalPreview.src = imageSrc!;
@@ -209,6 +234,7 @@ function processImage(): void {
     // Enable export/focus buttons and show image actions
     $exportGrid.disabled = false;
     $exportStats.disabled = false;
+    $exportCsv.disabled = false;
     $focusBtn.disabled = false;
     $imageActions.classList.remove('hidden');
     $editToggle.classList.remove('hidden');
@@ -462,6 +488,35 @@ function bindExportEvents(): void {
 
   $exportStats.addEventListener('click', () => {
     if (grid.length > 0) exportStats(grid, currentSystem);
+  });
+}
+
+// ── CSV import/export ───────────────────────────────────────────────────────
+
+function bindCsvEvents(): void {
+  $exportCsv.addEventListener('click', () => {
+    if (grid.length > 0) exportCsv(grid);
+  });
+
+  $importCsv.addEventListener('change', async () => {
+    const file = $importCsv.files?.[0];
+    if (!file) return;
+    try {
+      grid = await importCsv(file);
+      imageSrc = null;
+      originalImageSrc = null;
+      drawPreview($previewCanvas, grid, currentSystem);
+      updateColorStats();
+      autoSave(grid, currentSystem, $pixelMode.value as PixelationMode, parseInt($granularity.value), parseInt($mergeThreshold.value));
+      $exportGrid.disabled = false;
+      $exportStats.disabled = false;
+      $exportCsv.disabled = false;
+      $focusBtn.disabled = false;
+      $editToggle.classList.remove('hidden');
+    } catch (e) {
+      alert(`导入失败: ${e instanceof Error ? e.message : e}`);
+    }
+    $importCsv.value = '';
   });
 }
 
