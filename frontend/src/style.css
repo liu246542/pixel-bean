@@ -184,6 +184,35 @@ a:hover {
 }
 
 
+.preset-group {
+  display: flex;
+  gap: 2px;
+}
+
+.preset-btn {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-size: 0.6875rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.preset-btn:first-child { border-radius: 4px 0 0 4px; }
+.preset-btn:last-child { border-radius: 0 4px 4px 0; }
+
+.preset-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.preset-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
 .compact-input {
   width: 52px;
   padding: 4px 6px;

@@ -404,11 +404,35 @@ function toggleColorExclusion(hex: string): void {
 
 // ── Settings events ─────────────────────────────────────────────────────────
 
+function bindPresetGroup(groupId: string, input: HTMLInputElement): void {
+  const group = document.getElementById(groupId);
+  if (!group) return;
+  group.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest('.preset-btn') as HTMLElement | null;
+    if (!btn) return;
+    const val = btn.dataset.val;
+    if (!val) return;
+    input.value = val;
+    group.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    processImage();
+  });
+  // Sync active state when input changes manually
+  input.addEventListener('change', () => {
+    const val = input.value;
+    group.querySelectorAll('.preset-btn').forEach(b => {
+      b.classList.toggle('active', (b as HTMLElement).dataset.val === val);
+    });
+  });
+}
+
 function bindSettingsEvents(): void {
-  // Granularity
+  // Granularity with presets
+  bindPresetGroup('granularityPresets', $granularity);
   $granularity.addEventListener('change', () => processImage());
 
-  // Merge threshold (减色)
+  // Merge threshold (减色) with presets
+  bindPresetGroup('mergePresets', $mergeThreshold);
   $mergeThreshold.addEventListener('change', () => processImage());
 
   // Pixel mode

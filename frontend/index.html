@@ -45,10 +45,21 @@
         <div class="top-bar__controls">
           <label class="inline-control">
             <span>粒度</span>
+            <div class="preset-group" id="granularityPresets">
+              <button class="preset-btn" data-val="15">粗</button>
+              <button class="preset-btn active" data-val="30">中</button>
+              <button class="preset-btn" data-val="50">细</button>
+              <button class="preset-btn" data-val="100">精</button>
+            </div>
             <input id="granularity" type="number" min="10" max="200" value="30" class="compact-input" />
           </label>
           <label class="inline-control">
             <span>减色</span>
+            <div class="preset-group" id="mergePresets">
+              <button class="preset-btn" data-val="15">少</button>
+              <button class="preset-btn active" data-val="40">中</button>
+              <button class="preset-btn" data-val="70">多</button>
+            </div>
             <input id="mergeThreshold" type="number" min="0" max="100" value="40" class="compact-input" />
           </label>
           <select id="pixelMode" class="compact-select">
