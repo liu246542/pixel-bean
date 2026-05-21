@@ -291,9 +291,9 @@ function processImage(): void {
     const mode = $pixelMode.value as PixelationMode;
 
     grid = pixelate(imageData, cols, rows, activePalette, mode, fallback);
+    markBackground(grid);
     mergeColors(grid, threshold);
     removeIsolatedNoise(grid);
-    markBackground(grid);
     redrawPreview();
     updateColorStats();
 
