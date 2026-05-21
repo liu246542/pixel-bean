@@ -11,16 +11,19 @@ interface ColorEntry {
 interface FocusState {
   grid: MappedPixel[][];
   system: ColorSystem;
-  canvas: HTMLCanvasElement;
-  container: HTMLElement;
   colors: ColorEntry[];
   activeIndex: number;
   completedCells: Set<string>;
+  overlay: HTMLElement;
+  canvas: HTMLCanvasElement;
+  panel: HTMLElement;
   clickAbort: AbortController;
   onExit: () => void;
 }
 
 let state: FocusState | null = null;
+
+const RULER_SIZE = 24;
 
 function rgbToHex(r: number, g: number, b: number): string {
   return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
@@ -79,6 +82,42 @@ function buildColorList(grid: MappedPixel[][]): ColorEntry[] {
   return Array.from(map.values()).sort((a, b) => b.total - a.total);
 }
 
+function markColorDone(colorEntry: ColorEntry): void {
+  if (!state) return;
+  const { grid, completedCells } = state;
+  const rows = grid.length;
+  const cols = grid[0].length;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = grid[r][c];
+      if (cell.isExternal || cell.paletteId === TRANSPARENT_KEY) continue;
+      const hex = rgbToHex(cell.color.r, cell.color.g, cell.color.b);
+      if (hex === colorEntry.hex) {
+        completedCells.add(cellKey(r, c));
+      }
+    }
+  }
+  colorEntry.completed = colorEntry.total;
+}
+
+function unmarkColor(colorEntry: ColorEntry): void {
+  if (!state) return;
+  const { grid, completedCells } = state;
+  const rows = grid.length;
+  const cols = grid[0].length;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = grid[r][c];
+      if (cell.isExternal || cell.paletteId === TRANSPARENT_KEY) continue;
+      const hex = rgbToHex(cell.color.r, cell.color.g, cell.color.b);
+      if (hex === colorEntry.hex) {
+        completedCells.delete(cellKey(r, c));
+      }
+    }
+  }
+  colorEntry.completed = 0;
+}
+
 export function isFocusActive(): boolean {
   return state !== null;
 }
@@ -86,27 +125,35 @@ export function isFocusActive(): boolean {
 export function enterFocusMode(
   grid: MappedPixel[][],
   system: ColorSystem,
-  canvas: HTMLCanvasElement,
-  container: HTMLElement,
   onExit: () => void
 ): boolean {
   if (state) return false;
-
   const colors = buildColorList(grid);
   if (colors.length === 0) return false;
 
+  // Create fullscreen overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'focus-overlay';
+  overlay.innerHTML = `
+    <div class="focus-layout">
+      <div class="focus-canvas-area">
+        <canvas class="focus-canvas"></canvas>
+      </div>
+      <div class="focus-sidebar"></div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const canvas = overlay.querySelector('.focus-canvas') as HTMLCanvasElement;
+  const panel = overlay.querySelector('.focus-sidebar') as HTMLElement;
   const clickAbort = new AbortController();
 
   state = {
-    grid,
-    system,
-    canvas,
-    container,
-    colors,
+    grid, system, colors,
     activeIndex: 0,
     completedCells: new Set(),
-    clickAbort,
-    onExit,
+    overlay, canvas, panel,
+    clickAbort, onExit,
   };
 
   renderFocusUI();
@@ -118,42 +165,48 @@ export function enterFocusMode(
 export function exitFocusMode(): void {
   if (!state) return;
   state.clickAbort.abort();
-  state.container.innerHTML = '';
+  state.overlay.remove();
   state = null;
 }
 
 function renderFocusUI(): void {
   if (!state) return;
 
-  const { colors, activeIndex, system, container } = state;
+  const { colors, activeIndex, system, panel } = state;
   const totalBeads = colors.reduce((s, c) => s + c.total, 0);
   const completedBeads = colors.reduce((s, c) => s + c.completed, 0);
   const completedColors = colors.filter(c => c.completed >= c.total).length;
-  const allDone = completedBeads >= totalBeads;
 
-  container.innerHTML = `
+  panel.innerHTML = `
     <div class="focus-header">
-      <div class="focus-progress-summary">
-        <span>进度：${completedColors}/${colors.length} 种颜色</span>
-        <span>${completedBeads}/${totalBeads} 粒</span>
-      </div>
-      <div class="focus-progress-bar">
-        <div class="focus-progress-fill" style="width:${totalBeads ? (completedBeads / totalBeads * 100) : 0}%"></div>
-      </div>
+      <h3>专注拼豆</h3>
+      <button class="btn btn--sm" data-focus="exit">退出</button>
+    </div>
+    <div class="focus-progress-summary">
+      <span>${completedColors}/${colors.length} 种颜色</span>
+      <span>${completedBeads}/${totalBeads} 粒</span>
+    </div>
+    <div class="focus-progress-bar">
+      <div class="focus-progress-fill" style="width:${totalBeads ? (completedBeads / totalBeads * 100) : 0}%"></div>
     </div>
     <div class="focus-color-list"></div>
     <div class="focus-nav">
       <button class="btn btn--sm" data-focus="prev" ${activeIndex === 0 ? 'disabled' : ''}>上一个</button>
-      <button class="btn btn--sm btn--primary" data-focus="next">${allDone ? '全部完成！' : activeIndex >= colors.length - 1 ? '已是最后一个' : '下一个颜色'}</button>
+      <button class="btn btn--sm btn--primary" data-focus="next" ${activeIndex >= colors.length - 1 ? 'disabled' : ''}>下一个</button>
     </div>
   `;
 
-  if (allDone) {
-    const nextBtn = container.querySelector('[data-focus="next"]') as HTMLButtonElement;
-    nextBtn.disabled = true;
-  }
+  // Exit button
+  panel.querySelector('[data-focus="exit"]')!.addEventListener('click', () => {
+    if (state) {
+      const cb = state.onExit;
+      exitFocusMode();
+      cb();
+    }
+  });
 
-  const list = container.querySelector('.focus-color-list')!;
+  // Color list with checkboxes
+  const list = panel.querySelector('.focus-color-list')!;
   colors.forEach((c, i) => {
     const done = c.completed >= c.total;
     const active = i === activeIndex;
@@ -162,25 +215,45 @@ function renderFocusUI(): void {
 
     const row = document.createElement('div');
     row.className = 'focus-color-row' + (active ? ' active' : '') + (done ? ' done' : '');
-    row.tabIndex = 0;
-    row.innerHTML = `
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = done;
+    checkbox.className = 'focus-checkbox';
+    checkbox.addEventListener('change', (e) => {
+      e.stopPropagation();
+      if (checkbox.checked) {
+        markColorDone(c);
+      } else {
+        unmarkColor(c);
+      }
+      renderFocusUI();
+      drawFocusCanvas();
+    });
+
+    const content = document.createElement('div');
+    content.className = 'focus-color-content';
+    content.innerHTML = `
       <span class="color-swatch" style="background:${c.hex}"></span>
       <span class="focus-color-key">${key}</span>
       <span class="focus-color-count">${c.completed}/${c.total}</span>
       <div class="focus-color-bar"><div class="focus-color-bar-fill" style="width:${pct}%"></div></div>
-      ${done ? '<span class="focus-check">✓</span>' : ''}
     `;
-    row.addEventListener('click', () => {
+    content.addEventListener('click', () => {
       if (state) {
         state.activeIndex = i;
         renderFocusUI();
         drawFocusCanvas();
       }
     });
+
+    row.appendChild(checkbox);
+    row.appendChild(content);
     list.appendChild(row);
   });
 
-  container.querySelector('[data-focus="prev"]')!.addEventListener('click', () => {
+  // Nav buttons
+  panel.querySelector('[data-focus="prev"]')!.addEventListener('click', () => {
     if (state && state.activeIndex > 0) {
       state.activeIndex--;
       renderFocusUI();
@@ -188,9 +261,8 @@ function renderFocusUI(): void {
     }
   });
 
-  container.querySelector('[data-focus="next"]')!.addEventListener('click', () => {
-    if (!state) return;
-    if (state.activeIndex < state.colors.length - 1) {
+  panel.querySelector('[data-focus="next"]')!.addEventListener('click', () => {
+    if (state && state.activeIndex < state.colors.length - 1) {
       state.activeIndex++;
       renderFocusUI();
       drawFocusCanvas();
@@ -209,17 +281,47 @@ function drawFocusCanvas(): void {
   const cols = grid[0].length;
   const activeHex = colors[activeIndex].hex;
 
-  const cellSize = Math.max(4, Math.min(40, Math.floor(800 / Math.max(cols, rows))));
-  canvas.width = cols * cellSize;
-  canvas.height = rows * cellSize;
+  // Calculate cell size to fill available space
+  const area = canvas.parentElement!;
+  const availW = area.clientWidth - RULER_SIZE;
+  const availH = area.clientHeight - RULER_SIZE;
+  const cellSize = Math.max(6, Math.floor(Math.min(availW / cols, availH / rows)));
+
+  canvas.width = cols * cellSize + RULER_SIZE;
+  canvas.height = rows * cellSize + RULER_SIZE;
 
   const ctx = canvas.getContext('2d')!;
+  const ox = RULER_SIZE;
+  const oy = RULER_SIZE;
 
+  // ── Ruler background ──
+  ctx.fillStyle = '#F0F0F0';
+  ctx.fillRect(0, 0, canvas.width, RULER_SIZE);
+  ctx.fillRect(0, 0, RULER_SIZE, canvas.height);
+
+  // ── Column numbers (top) ──
+  ctx.fillStyle = '#888';
+  ctx.font = `${Math.min(10, cellSize * 0.6)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (let c = 0; c < cols; c++) {
+    if (cellSize < 10 && c % 5 !== 0) continue;
+    ctx.fillText(String(c + 1), ox + c * cellSize + cellSize / 2, RULER_SIZE / 2);
+  }
+
+  // ── Row numbers (left) ──
+  ctx.textAlign = 'right';
+  for (let r = 0; r < rows; r++) {
+    if (cellSize < 10 && r % 5 !== 0) continue;
+    ctx.fillText(String(r + 1), RULER_SIZE - 3, oy + r * cellSize + cellSize / 2);
+  }
+
+  // ── Grid cells ──
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cell = grid[r][c];
-      const x = c * cellSize;
-      const y = r * cellSize;
+      const x = ox + c * cellSize;
+      const y = oy + r * cellSize;
       const key = cellKey(r, c);
       const isBlank = cell.isExternal || cell.paletteId === TRANSPARENT_KEY;
       const hex = isBlank ? '' : rgbToHex(cell.color.r, cell.color.g, cell.color.b);
@@ -227,16 +329,16 @@ function drawFocusCanvas(): void {
       const isActive = hex === activeHex;
 
       if (isBlank) {
-        ctx.fillStyle = '#F5F5F5';
+        ctx.fillStyle = '#FAFAFA';
       } else if (isDone) {
         ctx.fillStyle = hex;
-        ctx.globalAlpha = 0.4;
+        ctx.globalAlpha = 0.35;
       } else if (isActive) {
         ctx.fillStyle = hex;
         ctx.globalAlpha = 1;
       } else {
         ctx.fillStyle = '#E8E8E8';
-        ctx.globalAlpha = 0.6;
+        ctx.globalAlpha = 0.5;
       }
 
       ctx.fillRect(x, y, cellSize, cellSize);
@@ -256,7 +358,7 @@ function drawFocusCanvas(): void {
       }
 
       if (isDone && !isBlank && cellSize >= 10) {
-        ctx.fillStyle = 'rgba(40,167,69,0.7)';
+        ctx.fillStyle = 'rgba(40,167,69,0.6)';
         ctx.font = `${Math.floor(cellSize * 0.5)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -279,9 +381,10 @@ function setupFocusCanvasClick(): void {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    const mx = (e.clientX - rect.left) * scaleX;
-    const my = (e.clientY - rect.top) * scaleY;
-    const cellSize = canvas.width / cols;
+    const mx = (e.clientX - rect.left) * scaleX - RULER_SIZE;
+    const my = (e.clientY - rect.top) * scaleY - RULER_SIZE;
+
+    const cellSize = (canvas.width - RULER_SIZE) / cols;
     const col = Math.floor(mx / cellSize);
     const row = Math.floor(my / cellSize);
 

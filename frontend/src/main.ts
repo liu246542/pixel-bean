@@ -25,7 +25,7 @@ import {
 import type { AIServiceConfig } from './ai-client';
 import { showCropModal } from './crop';
 import { autoSave, autoLoad, restoreGrid, exportCsv, importCsv } from './storage';
-import { enterFocusMode, exitFocusMode, isFocusActive } from './focus';
+import { enterFocusMode, isFocusActive } from './focus';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -84,9 +84,6 @@ const $exportStats = document.getElementById('exportStats') as HTMLButtonElement
 const $exportCsv = document.getElementById('exportCsv') as HTMLButtonElement;
 const $importCsv = document.getElementById('importCsv') as HTMLInputElement;
 const $focusBtn = document.getElementById('focusBtn') as HTMLButtonElement;
-const $focusPanel = document.getElementById('focusPanel') as HTMLDivElement;
-const $focusExitBar = document.getElementById('focusExitBar') as HTMLDivElement;
-const $focusExit = document.getElementById('focusExit') as HTMLButtonElement;
 
 const $loadingOverlay = document.getElementById('loadingOverlay') as HTMLDivElement;
 const $loadingText = document.getElementById('loadingText') as HTMLParagraphElement;
@@ -534,26 +531,14 @@ function bindCsvEvents(): void {
 
 // ── Focus mode ──────────────────────────────────────────────────────────────
 
-function leaveFocusMode(): void {
-  exitFocusMode();
-  $focusPanel.classList.add('hidden');
-  $focusExitBar.classList.add('hidden');
-  $focusBtn.disabled = false;
-  drawPreview($previewCanvas, grid, currentSystem);
-}
-
 function bindFocusEvents(): void {
   $focusBtn.addEventListener('click', () => {
     if (grid.length === 0 || isFocusActive()) return;
-    const ok = enterFocusMode(grid, currentSystem, $previewCanvas, $focusPanel, leaveFocusMode);
-    if (ok) {
-      $focusPanel.classList.remove('hidden');
-      $focusExitBar.classList.remove('hidden');
-      $focusBtn.disabled = true;
-    }
+    enterFocusMode(grid, currentSystem, () => {
+      $focusBtn.disabled = false;
+    });
+    $focusBtn.disabled = true;
   });
-
-  $focusExit.addEventListener('click', leaveFocusMode);
 }
 
 // ── AI integration ──────────────────────────────────────────────────────────
