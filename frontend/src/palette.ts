@@ -3,7 +3,7 @@ import { TRANSPARENT_KEY } from './types';
 import colorData from './color-data.json';
 
 // Type alias for the raw JSON structure
-type ColorDataEntry = Record<ColorSystem, string>;
+type ColorDataEntry = Partial<Record<ColorSystem, string>>;
 type ColorDataMap = Record<string, ColorDataEntry>;
 const typedColorData = colorData as ColorDataMap;
 
@@ -15,6 +15,9 @@ export const COLOR_SYSTEM_OPTIONS: { key: ColorSystem; name: string }[] = [
   { key: '漫漫', name: '漫漫' },
   { key: '盼盼', name: '盼盼' },
   { key: '咪小窝', name: '咪小窝' },
+  { key: 'Hama', name: 'Hama' },
+  { key: 'Perler', name: 'Perler' },
+  { key: 'Artkal-S', name: 'Artkal-S' },
 ];
 
 // ── Core color math ──────────────────────────────────────────────────────────
@@ -259,13 +262,10 @@ export function buildFullPalette(): PaletteColor[] {
 
   for (const [hex, systems] of Object.entries(typedColorData)) {
     const rgb = hexToRgb(hex);
-    if (!rgb) continue; // skip any malformed entries
+    if (!rgb) continue;
 
-    palette.push({
-      id: systems['MARD'],
-      name: hex,
-      color: rgb,
-    });
+    const id = systems['MARD'] ?? Object.values(systems)[0] ?? hex;
+    palette.push({ id, name: hex, color: rgb });
   }
 
   return palette;
