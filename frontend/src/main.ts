@@ -14,7 +14,7 @@ import { pixelate } from './pixelation';
 import { mergeColors } from './color-merge';
 import { markBackground } from './background';
 import { removeIsolatedNoise } from './noise-cleanup';
-import { drawPreview, getCellAt } from './preview';
+import { drawPreview, getCellAt, drawBoardSplitOverlay } from './preview';
 import { exportKeyGrid, exportStats } from './export';
 import {
   loadConfig,
@@ -79,6 +79,9 @@ const $mergeThreshold = document.getElementById('mergeThreshold') as HTMLInputEl
 const $mergeVal = document.getElementById('mergeVal') as HTMLSpanElement;
 const $pixelMode = document.getElementById('pixelMode') as HTMLSelectElement;
 const $colorSystem = document.getElementById('colorSystem') as HTMLSelectElement;
+
+const $boardSplitToggle = document.getElementById('boardSplitToggle') as HTMLInputElement;
+const $boardSize = document.getElementById('boardSize') as HTMLSelectElement;
 
 const $totalCount = document.getElementById('totalCount') as HTMLSpanElement;
 const $colorList = document.getElementById('colorList') as HTMLDivElement;
@@ -244,6 +247,7 @@ function processImage(): void {
     removeIsolatedNoise(grid);
     markBackground(grid);
     drawPreview($previewCanvas, grid, currentSystem);
+    refreshBoardOverlay();
     updateColorStats();
 
     // Show original image preview
@@ -386,12 +390,34 @@ function bindSettingsEvents(): void {
   // Color system
   $colorSystem.addEventListener('change', () => {
     currentSystem = $colorSystem.value as ColorSystem;
-    // Only re-draw preview and update stats; no re-pixelation needed
     if (grid.length > 0) {
       drawPreview($previewCanvas, grid, currentSystem);
+      refreshBoardOverlay();
       updateColorStats();
     }
   });
+
+  // Board split
+  $boardSplitToggle.addEventListener('change', () => {
+    $boardSize.disabled = !$boardSplitToggle.checked;
+    if (grid.length > 0) {
+      drawPreview($previewCanvas, grid, currentSystem);
+      refreshBoardOverlay();
+    }
+  });
+  $boardSize.addEventListener('change', () => {
+    if (grid.length > 0 && $boardSplitToggle.checked) {
+      drawPreview($previewCanvas, grid, currentSystem);
+      refreshBoardOverlay();
+    }
+  });
+}
+
+function refreshBoardOverlay(): void {
+  if ($boardSplitToggle.checked && grid.length > 0) {
+    const size = parseInt($boardSize.value);
+    drawBoardSplitOverlay($previewCanvas, grid.length, grid[0].length, size);
+  }
 }
 
 // ── Preview tooltip ─────────────────────────────────────────────────────────
@@ -551,7 +577,10 @@ function bindExportEvents(): void {
   });
 
   $exportPdf.addEventListener('click', () => {
-    if (grid.length > 0) exportPdf(grid, currentSystem);
+    if (grid.length > 0) {
+      const bs = $boardSplitToggle.checked ? parseInt($boardSize.value) : undefined;
+      exportPdf(grid, currentSystem, undefined, bs);
+    }
   });
 }
 

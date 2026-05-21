@@ -94,6 +94,53 @@ export function drawPreview(
   }
 }
 
+export function drawBoardSplitOverlay(
+  canvas: HTMLCanvasElement,
+  gridRows: number,
+  gridCols: number,
+  boardSize: number
+): void {
+  const ctx = canvas.getContext('2d');
+  if (!ctx || gridRows === 0 || gridCols === 0) return;
+
+  const cellSize = canvas.width / gridCols;
+  const boardRows = Math.ceil(gridRows / boardSize);
+  const boardCols = Math.ceil(gridCols / boardSize);
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(220, 53, 69, 0.7)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 3]);
+
+  for (let br = 1; br < boardRows; br++) {
+    const y = br * boardSize * cellSize;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+  }
+  for (let bc = 1; bc < boardCols; bc++) {
+    const x = bc * boardSize * cellSize;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+  }
+
+  ctx.setLineDash([]);
+  ctx.font = `bold ${Math.max(10, cellSize * 2)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  for (let br = 0; br < boardRows; br++) {
+    for (let bc = 0; bc < boardCols; bc++) {
+      const label = String.fromCharCode(65 + br) + String(bc + 1);
+      const cx = (bc * boardSize + Math.min(boardSize, gridCols - bc * boardSize) / 2) * cellSize;
+      const cy = (br * boardSize + Math.min(boardSize, gridRows - br * boardSize) / 2) * cellSize;
+
+      ctx.fillStyle = 'rgba(220, 53, 69, 0.15)';
+      ctx.fillRect(cx - cellSize * 2, cy - cellSize * 1.2, cellSize * 4, cellSize * 2.4);
+      ctx.fillStyle = 'rgba(220, 53, 69, 0.8)';
+      ctx.fillText(label, cx, cy);
+    }
+  }
+  ctx.restore();
+}
+
 /**
  * Map a pointer event position (in client/viewport coordinates) to the
  * corresponding grid cell.

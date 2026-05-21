@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import type { MappedPixel, ColorSystem } from './types';
 import { TRANSPARENT_KEY } from './types';
 import { getDisplayKey, getContrastColor } from './palette';
+import { splitBoards, extractBoard } from './board-split';
 
 function rgbToHex(r: number, g: number, b: number): string {
   return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
@@ -10,7 +11,8 @@ function rgbToHex(r: number, g: number, b: number): string {
 export function exportPdf(
   grid: MappedPixel[][],
   system: ColorSystem,
-  filename = 'pixel-bean-pattern.pdf'
+  filename = 'pixel-bean-pattern.pdf',
+  boardSize?: number
 ): void {
   const rows = grid.length;
   if (rows === 0) return;
@@ -74,7 +76,59 @@ export function exportPdf(
     doc.text(String(r + 1), ox - 1, oy + r * cellOverview + cellOverview / 2 + 0.3, { align: 'right' });
   }
 
-  // ── Page 2: Color legend / bead list ──────────────────────────────────────
+  // ── Board detail pages (if board splitting enabled) ────────────────────────
+  if (boardSize && boardSize > 0) {
+    const boards = splitBoards(rows, cols, boardSize);
+    for (const board of boards) {
+      doc.addPage();
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`Board ${board.label}  (${board.cols}×${board.rows})`, margin, margin + 4);
+
+      const sub = extractBoard(grid, board);
+      const detailW = pageW - margin * 2;
+      const detailH = pageH - margin * 2 - 10;
+      const detailCell = Math.min(detailW / board.cols, detailH / board.rows);
+      const dx = margin + (detailW - board.cols * detailCell) / 2;
+      const dy = margin + 10;
+
+      for (let r = 0; r < board.rows; r++) {
+        for (let c = 0; c < board.cols; c++) {
+          const cell = sub[r][c];
+          const isBlank = cell.isExternal || cell.paletteId === TRANSPARENT_KEY;
+          const [cr, cg, cb] = isBlank ? [255, 255, 255] : [cell.color.r, cell.color.g, cell.color.b];
+          const hex = isBlank ? '#FFFFFF' : rgbToHex(cr, cg, cb);
+
+          doc.setFillColor(cr, cg, cb);
+          doc.rect(dx + c * detailCell, dy + r * detailCell, detailCell, detailCell, 'F');
+          doc.setDrawColor(200, 200, 200);
+          doc.setLineWidth(0.1);
+          doc.rect(dx + c * detailCell, dy + r * detailCell, detailCell, detailCell, 'S');
+
+          if (!isBlank && detailCell >= 4) {
+            const key = getDisplayKey(hex, system);
+            const contrast = getContrastColor(hex);
+            const [tr, tg, tb] = contrast === '#000000' ? [0, 0, 0] : [255, 255, 255];
+            doc.setTextColor(tr, tg, tb);
+            doc.setFontSize(Math.min(7, detailCell * 0.55));
+            doc.text(key, dx + c * detailCell + detailCell / 2, dy + r * detailCell + detailCell / 2 + 0.5, { align: 'center' });
+          }
+        }
+      }
+
+      // Row/col numbers
+      doc.setTextColor(100, 100, 100);
+      doc.setFontSize(4);
+      for (let c = 0; c < board.cols; c++) {
+        doc.text(String(c + 1), dx + c * detailCell + detailCell / 2, dy - 1, { align: 'center' });
+      }
+      for (let r = 0; r < board.rows; r++) {
+        doc.text(String(r + 1), dx - 1, dy + r * detailCell + detailCell / 2 + 0.3, { align: 'right' });
+      }
+    }
+  }
+
+  // ── Color legend / bead list ──────────────────────────────────────────────
   doc.addPage();
   doc.setFontSize(12);
   doc.setTextColor(0, 0, 0);

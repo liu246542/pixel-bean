@@ -391,6 +391,11 @@ a:hover {
   margin-left: 4px;
 }
 
+.board-split-control input[type="checkbox"] {
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
 .import-csv-label {
   cursor: pointer;
 }
