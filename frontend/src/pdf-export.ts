@@ -76,9 +76,18 @@ export function exportPdf(
     doc.text(String(r + 1), ox - 1, oy + r * cellOverview + cellOverview / 2 + 0.3, { align: 'right' });
   }
 
-  // ── Board detail pages (if board splitting enabled) ────────────────────────
-  if (boardSize && boardSize > 0) {
-    const boards = splitBoards(rows, cols, boardSize);
+  // Note on overview if cells are too small for labels
+  if (cellOverview < 3) {
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 150);
+    doc.text('(色号详见后续分板页)', ox, oy + rows * cellOverview + 4);
+  }
+
+  // ── Board detail pages ────────────────────────────────────────────────────
+  // Auto-enable when overview cells are too small for labels
+  const effectiveBoardSize = boardSize ?? (cellOverview < 3 ? 29 : 0);
+  if (effectiveBoardSize > 0) {
+    const boards = splitBoards(rows, cols, effectiveBoardSize);
     for (const board of boards) {
       doc.addPage();
       doc.setFontSize(10);
