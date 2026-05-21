@@ -716,10 +716,12 @@ function bindAiEvents(): void {
 
     if (aiMode !== 'generate') {
       aiMode = 'generate';
-      $aiPrompt.value = '';
-      $aiPrompt.placeholder = '输入要生成的内容（如：一只可爱的猫咪、一朵向日葵）';
+      $aiPrompt.value = DEFAULT_GENERATE_PROMPT;
+      $aiPrompt.placeholder = '在风格描述前输入要生成的内容';
       $aiPromptWrap.classList.remove('hidden');
+      // Put cursor at the beginning so user can type content first
       $aiPrompt.focus();
+      $aiPrompt.setSelectionRange(0, 0);
       $aiGenerate.textContent = '执行生成';
       $aiOptimize.textContent = 'AI 优化';
       return;
@@ -734,7 +736,7 @@ function bindAiEvents(): void {
     $loadingOverlay.classList.remove('hidden');
     $loadingText.textContent = 'AI 生成中...';
 
-    const prompt = `${userPrompt}。${DEFAULT_GENERATE_PROMPT}`;
+    const prompt = userPrompt;
     const result = await generateImage(aiConfig, '', prompt, (text) => {
       $loadingText.textContent = text;
     });
