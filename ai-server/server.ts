@@ -228,6 +228,9 @@ async function handleGenerate(
 
       // Spawn codex, pipe prompt via stdin
       const exitOk = await new Promise<boolean>((resolve, reject) => {
+        let settled = false;
+        let timedOut = false;
+
         const child = spawn('codex', ['exec', '-'], {
           cwd: tmpDir,
           env: process.env,
@@ -238,8 +241,9 @@ async function handleGenerate(
         child.stdin.end(codexPrompt);
 
         const timeout = setTimeout(() => {
+          timedOut = true;
           child.kill('SIGTERM');
-          resolve(false);
+          // Don't resolve here — wait for 'close' event
         }, 600_000);
 
         const MAX_LOG = 64_000;
@@ -259,16 +263,21 @@ async function handleGenerate(
           codexLog = (codexLog + chunk.toString()).slice(-MAX_LOG);
         });
 
-        child.on('close', (code) => {
+        function settle(ok: boolean): void {
+          if (settled) return;
+          settled = true;
           clearTimeout(timeout);
           onChild(null as unknown as ChildProcess);
           if (isAborted()) { reject(new Error('Aborted')); return; }
-          resolve(code === 0 || code === null);
+          resolve(ok);
+        }
+
+        child.on('close', (code) => {
+          settle(!timedOut && (code === 0 || code === null));
         });
 
         child.on('error', () => {
-          clearTimeout(timeout);
-          resolve(false);
+          settle(false);
         });
       });
 
