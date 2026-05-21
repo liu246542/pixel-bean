@@ -788,7 +788,7 @@ function bindAiEvents(): void {
     if (aiMode !== 'generate') {
       aiMode = 'generate';
       $aiPrompt.value = DEFAULT_GENERATE_PROMPT;
-      $aiPrompt.placeholder = '在风格描述前输入要生成的内容';
+      $aiPrompt.placeholder = 'AI 优化 / 生成提示词';
       $aiPromptWrap.classList.remove('hidden');
       // Put cursor at the beginning so user can type content first
       $aiPrompt.focus();
