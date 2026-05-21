@@ -146,6 +146,7 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
   const uuid = crypto.randomUUID();
   const inputPath = path.join(tmpDir, `${uuid}-input.png`);
   const outputPath = path.join(tmpDir, `${uuid}-output.png`);
+  const markerPath = path.join(tmpDir, `${uuid}-marker`);
   let heartbeat: ReturnType<typeof setInterval> | null = null;
   let outputBuffer: Buffer | null = null;
   let codexLog = '';
@@ -155,8 +156,6 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
     const codexHome = process.env.CODEX_HOME || path.join(process.env.HOME || '', '.codex');
     const genDir = path.join(codexHome, 'generated_images');
 
-    // Create a timestamp marker for find -newer (used when codex saves elsewhere)
-    const markerPath = path.join(tmpDir, `${uuid}-marker`);
     fs.writeFileSync(markerPath, '');
 
     let codexPrompt: string;
@@ -238,6 +237,7 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
     send(ws, { type: 'done', success: true, image: outputBase64 });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    if (codexLog) console.error('Codex failed. Log:\n', codexLog.slice(-2000));
     send(ws, { type: 'error', error: message });
   } finally {
     if (heartbeat) clearInterval(heartbeat);
