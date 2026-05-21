@@ -1004,6 +1004,45 @@ a:hover {
   gap: 8px;
 }
 
+.guide-preview {
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.guide-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.guide-preview-header:hover { color: var(--text); }
+
+.guide-preview-arrow {
+  font-size: 0.625rem;
+}
+
+.guide-preview-body {
+  padding: 12px;
+  background: #FAFAFA;
+  display: flex;
+  justify-content: center;
+}
+
+.guide-canvas {
+  max-width: 100%;
+  max-height: 30vh;
+  object-fit: contain;
+}
+
 .guide-title {
   display: flex;
   align-items: center;

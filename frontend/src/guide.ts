@@ -1,6 +1,6 @@
 import type { MappedPixel, ColorSystem } from './types';
 import { TRANSPARENT_KEY } from './types';
-import { getDisplayKey } from './palette';
+import { getDisplayKey, getContrastColor } from './palette';
 
 interface ColorRun {
   row: number;
@@ -76,6 +76,55 @@ function formatRunCount(run: ColorRun): number {
   return run.colEnd - run.colStart + 1;
 }
 
+function drawGuidePreview(canvas: HTMLCanvasElement, grid: MappedPixel[][], system: ColorSystem, activeHex: string): void {
+  const rows = grid.length;
+  const cols = rows > 0 ? grid[0].length : 0;
+  if (rows === 0 || cols === 0) return;
+
+  const cellSize = Math.max(3, Math.min(20, Math.floor(600 / Math.max(cols, rows))));
+  canvas.width = cols * cellSize;
+  canvas.height = rows * cellSize;
+
+  const ctx = canvas.getContext('2d')!;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = grid[r][c];
+      const x = c * cellSize;
+      const y = r * cellSize;
+      const isBlank = cell.isExternal || cell.paletteId === TRANSPARENT_KEY;
+      const hex = isBlank ? '' : rgbToHex(cell.color.r, cell.color.g, cell.color.b);
+      const isActive = hex === activeHex;
+
+      if (isBlank) {
+        ctx.fillStyle = '#F5F5F5';
+      } else if (isActive) {
+        ctx.fillStyle = hex;
+        ctx.globalAlpha = 1;
+      } else {
+        ctx.fillStyle = '#E8E8E8';
+        ctx.globalAlpha = 0.5;
+      }
+
+      ctx.fillRect(x, y, cellSize, cellSize);
+      ctx.globalAlpha = 1;
+
+      if (isActive && cellSize >= 10) {
+        const label = getDisplayKey(hex, system);
+        ctx.fillStyle = getContrastColor(hex);
+        ctx.font = `${Math.max(5, Math.floor(cellSize * 0.4))}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, x + cellSize / 2, y + cellSize / 2);
+      }
+
+      ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(x, y, cellSize, cellSize);
+    }
+  }
+}
+
 export function showGuideModal(grid: MappedPixel[][], system: ColorSystem): void {
   const guides = generateGuide(grid, system);
   if (guides.length === 0) return;
@@ -85,7 +134,18 @@ export function showGuideModal(grid: MappedPixel[][], system: ColorSystem): void
 
   overlay.innerHTML = `
     <div class="guide-layout">
-      <div class="guide-content"></div>
+      <div class="guide-content">
+        <div class="guide-preview">
+          <div class="guide-preview-header" data-guide="toggle-preview">
+            <span>预览图</span>
+            <span class="guide-preview-arrow">▼</span>
+          </div>
+          <div class="guide-preview-body">
+            <canvas class="guide-canvas"></canvas>
+          </div>
+        </div>
+        <div class="guide-text"></div>
+      </div>
       <div class="guide-sidebar">
         <div class="guide-header">
           <h3>引导模式</h3>
@@ -102,9 +162,19 @@ export function showGuideModal(grid: MappedPixel[][], system: ColorSystem): void
 
   document.body.appendChild(overlay);
 
-  const content = overlay.querySelector('.guide-content') as HTMLElement;
+  const textArea = overlay.querySelector('.guide-text') as HTMLElement;
+  const guideCanvas = overlay.querySelector('.guide-canvas') as HTMLCanvasElement;
   const colorNav = overlay.querySelector('.guide-color-nav') as HTMLElement;
   let activeIdx = 0;
+
+  // Toggle preview collapse
+  overlay.querySelector('[data-guide="toggle-preview"]')!.addEventListener('click', () => {
+    const body = overlay.querySelector('.guide-preview-body') as HTMLElement;
+    const arrow = overlay.querySelector('.guide-preview-arrow') as HTMLElement;
+    const collapsed = body.style.display === 'none';
+    body.style.display = collapsed ? '' : 'none';
+    arrow.textContent = collapsed ? '▼' : '▶';
+  });
 
   function renderColorNav(): void {
     colorNav.innerHTML = '';
@@ -127,6 +197,8 @@ export function showGuideModal(grid: MappedPixel[][], system: ColorSystem): void
 
   function renderContent(): void {
     const g = guides[activeIdx];
+    drawGuidePreview(guideCanvas, grid, system, g.hex);
+
     let html = `<div class="guide-title">
       <span class="color-swatch" style="background:${g.hex}"></span>
       <strong>${g.displayKey}</strong>
@@ -154,7 +226,7 @@ export function showGuideModal(grid: MappedPixel[][], system: ColorSystem): void
     }
     html += '</div>';
 
-    content.innerHTML = html;
+    textArea.innerHTML = html;
   }
 
   function generateFullText(): string {
