@@ -109,9 +109,7 @@ const $editRedo = document.getElementById('editRedo') as HTMLButtonElement;
 const $editDone = document.getElementById('editDone') as HTMLButtonElement;
 
 const $granularity = document.getElementById('granularity') as HTMLInputElement;
-const $granularityVal = document.getElementById('granularityVal') as HTMLSpanElement;
 const $mergeThreshold = document.getElementById('mergeThreshold') as HTMLInputElement;
-const $mergeVal = document.getElementById('mergeVal') as HTMLSpanElement;
 const $pixelMode = document.getElementById('pixelMode') as HTMLSelectElement;
 const $colorSystem = document.getElementById('colorSystem') as HTMLSelectElement;
 
@@ -186,9 +184,7 @@ function init(): void {
     grid = restoreGrid(saved);
     currentSystem = saved.system;
     $granularity.value = String(saved.granularity);
-    $granularityVal.textContent = String(saved.granularity);
     $mergeThreshold.value = String(saved.mergeThreshold);
-    $mergeVal.textContent = String(saved.mergeThreshold);
     $pixelMode.value = saved.mode;
     $colorSystem.value = saved.system;
     redrawPreview();
@@ -410,15 +406,9 @@ function toggleColorExclusion(hex: string): void {
 
 function bindSettingsEvents(): void {
   // Granularity
-  $granularity.addEventListener('input', () => {
-    $granularityVal.textContent = $granularity.value;
-  });
   $granularity.addEventListener('change', () => processImage());
 
-  // Merge threshold
-  $mergeThreshold.addEventListener('input', () => {
-    $mergeVal.textContent = $mergeThreshold.value;
-  });
+  // Merge threshold (减色)
   $mergeThreshold.addEventListener('change', () => processImage());
 
   // Pixel mode

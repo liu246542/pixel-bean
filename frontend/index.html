@@ -45,13 +45,11 @@
         <div class="top-bar__controls">
           <label class="inline-control">
             <span>粒度</span>
-            <input id="granularity" type="range" min="10" max="200" value="30" />
-            <span id="granularityVal">30</span>
+            <input id="granularity" type="number" min="10" max="200" value="30" class="compact-input" />
           </label>
           <label class="inline-control">
-            <span>合并</span>
-            <input id="mergeThreshold" type="range" min="0" max="100" value="40" />
-            <span id="mergeVal">40</span>
+            <span>减色</span>
+            <input id="mergeThreshold" type="number" min="0" max="100" value="40" class="compact-input" />
           </label>
           <select id="pixelMode" class="compact-select">
             <option value="dominant">主色卡通</option>

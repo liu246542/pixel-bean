@@ -183,14 +183,27 @@ a:hover {
   white-space: nowrap;
 }
 
-.inline-control input[type="range"] {
-  width: 80px;
+
+.compact-input {
+  width: 52px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) * 0.75);
+  background-color: var(--bg);
+  color: var(--text);
+  font-size: 0.8125rem;
+  text-align: center;
+  outline: none;
+  -moz-appearance: textfield;
 }
 
-.inline-control span:last-child {
-  width: 24px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+.compact-input::-webkit-inner-spin-button,
+.compact-input::-webkit-outer-spin-button {
+  opacity: 1;
+}
+
+.compact-input:focus {
+  border-color: var(--primary);
 }
 
 .compact-select {
