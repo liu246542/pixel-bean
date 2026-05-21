@@ -36,6 +36,7 @@ export function hexToRgb(hex: string): RgbColor | null {
 
 /**
  * Euclidean distance between two RGB colors.
+ * Retained for use as a merge threshold elsewhere; findClosestColor uses CIEDE2000.
  */
 export function colorDistance(a: RgbColor, b: RgbColor): number {
   const dr = a.r - b.r;
@@ -44,8 +45,173 @@ export function colorDistance(a: RgbColor, b: RgbColor): number {
   return Math.sqrt(dr * dr + dg * dg + db * db);
 }
 
+// ── CIELAB conversion ────────────────────────────────────────────────────────
+
+/** Cache of hex → LAB to avoid recomputing for palette colors. */
+const labCache = new Map<string, { L: number; a: number; b: number }>();
+
 /**
- * Return the palette entry whose color is closest (by Euclidean RGB distance)
+ * Convert an sRGB color (0–255 each channel) to CIELAB (D65 illuminant).
+ *
+ * Pipeline: sRGB → linearised sRGB → XYZ (D65) → CIELAB
+ */
+export function rgbToLab(rgb: RgbColor): { L: number; a: number; b: number } {
+  // sRGB → linear light
+  const toLinear = (c: number): number => {
+    const s = c / 255;
+    return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+
+  const r = toLinear(rgb.r);
+  const g = toLinear(rgb.g);
+  const b = toLinear(rgb.b);
+
+  // Linear sRGB → XYZ (D65, IEC 61966-2-1 matrix)
+  const X = r * 0.4124564 + g * 0.3575761 + b * 0.1804375;
+  const Y = r * 0.2126729 + g * 0.7151522 + b * 0.0721750;
+  const Z = r * 0.0193339 + g * 0.1191920 + b * 0.9503041;
+
+  // Normalise by D65 white point
+  const xn = X / 0.95047;
+  const yn = Y / 1.00000;
+  const zn = Z / 1.08883;
+
+  // CIE f function
+  const f = (t: number): number =>
+    t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116;
+
+  const fx = f(xn);
+  const fy = f(yn);
+  const fz = f(zn);
+
+  return {
+    L: 116 * fy - 16,
+    a: 500 * (fx - fy),
+    b: 200 * (fy - fz),
+  };
+}
+
+/**
+ * Get (or compute and cache) the LAB representation of an RGB color.
+ * The cache key is the 6-digit uppercase hex string.
+ */
+function getCachedLab(
+  rgb: RgbColor,
+): { L: number; a: number; b: number } {
+  const key =
+    ((rgb.r << 16) | (rgb.g << 8) | rgb.b).toString(16).padStart(6, '0').toUpperCase();
+  let lab = labCache.get(key);
+  if (!lab) {
+    lab = rgbToLab(rgb);
+    labCache.set(key, lab);
+  }
+  return lab;
+}
+
+// ── CIEDE2000 ────────────────────────────────────────────────────────────────
+
+/**
+ * CIEDE2000 color difference between two CIELAB colors.
+ *
+ * Implements the full formula from Sharma et al. (2005) including the
+ * lightness (kL), chroma (kC) and hue (kH) weighting functions and the
+ * rotation correction term RT.
+ *
+ * Reference: G. Sharma, W. Wu, E. N. Dalal, "The CIEDE2000 Color-Difference
+ * Formula: Implementation Notes, Supplementary Test Data, and Mathematical
+ * Observations," Color Research & Application, 30(1), 21–30, 2005.
+ */
+export function ciede2000(
+  lab1: { L: number; a: number; b: number },
+  lab2: { L: number; a: number; b: number },
+): number {
+  const { L: L1, a: a1, b: b1 } = lab1;
+  const { L: L2, a: a2, b: b2 } = lab2;
+
+  // Step 1 – compute C'ab and h'ab
+  const C1 = Math.sqrt(a1 * a1 + b1 * b1);
+  const C2 = Math.sqrt(a2 * a2 + b2 * b2);
+  const Cbar = (C1 + C2) / 2;
+  const Cbar7 = Math.pow(Cbar, 7);
+  const G = 0.5 * (1 - Math.sqrt(Cbar7 / (Cbar7 + 6103515625))); // 25^7 = 6103515625
+  const a1p = a1 * (1 + G);
+  const a2p = a2 * (1 + G);
+  const C1p = Math.sqrt(a1p * a1p + b1 * b1);
+  const C2p = Math.sqrt(a2p * a2p + b2 * b2);
+
+  const atan2deg = (y: number, x: number): number => {
+    const deg = (Math.atan2(y, x) * 180) / Math.PI;
+    return deg < 0 ? deg + 360 : deg;
+  };
+
+  const h1p = C1p === 0 ? 0 : atan2deg(b1, a1p);
+  const h2p = C2p === 0 ? 0 : atan2deg(b2, a2p);
+
+  // Step 2 – deltas
+  const dLp = L2 - L1;
+  const dCp = C2p - C1p;
+
+  let dhp: number;
+  if (C1p * C2p === 0) {
+    dhp = 0;
+  } else if (Math.abs(h2p - h1p) <= 180) {
+    dhp = h2p - h1p;
+  } else if (h2p - h1p > 180) {
+    dhp = h2p - h1p - 360;
+  } else {
+    dhp = h2p - h1p + 360;
+  }
+
+  const dHp = 2 * Math.sqrt(C1p * C2p) * Math.sin((dhp * Math.PI) / 360);
+
+  // Step 3 – CIEDE2000 weighting functions
+  const Lbarp = (L1 + L2) / 2;
+  const Cbarp = (C1p + C2p) / 2;
+
+  let hbarp: number;
+  if (C1p * C2p === 0) {
+    hbarp = h1p + h2p;
+  } else if (Math.abs(h1p - h2p) <= 180) {
+    hbarp = (h1p + h2p) / 2;
+  } else if (h1p + h2p < 360) {
+    hbarp = (h1p + h2p + 360) / 2;
+  } else {
+    hbarp = (h1p + h2p - 360) / 2;
+  }
+
+  const T =
+    1 -
+    0.17 * Math.cos(((hbarp - 30) * Math.PI) / 180) +
+    0.24 * Math.cos((2 * hbarp * Math.PI) / 180) +
+    0.32 * Math.cos(((3 * hbarp + 6) * Math.PI) / 180) -
+    0.2 * Math.cos(((4 * hbarp - 63) * Math.PI) / 180);
+
+  const SL =
+    1 +
+    (0.015 * Math.pow(Lbarp - 50, 2)) /
+      Math.sqrt(20 + Math.pow(Lbarp - 50, 2));
+  const SC = 1 + 0.045 * Cbarp;
+  const SH = 1 + 0.015 * Cbarp * T;
+
+  const Cbarp7 = Math.pow(Cbarp, 7);
+  const RC = 2 * Math.sqrt(Cbarp7 / (Cbarp7 + 6103515625));
+  const dTheta =
+    30 * Math.exp(-Math.pow((hbarp - 275) / 25, 2));
+  const RT = -Math.sin((2 * dTheta * Math.PI) / 180) * RC;
+
+  // kL = kC = kH = 1 (unity parametric factors for reference conditions)
+  const dE = Math.sqrt(
+    Math.pow(dLp / SL, 2) +
+      Math.pow(dCp / SC, 2) +
+      Math.pow(dHp / SH, 2) +
+      RT * (dCp / SC) * (dHp / SH),
+  );
+
+  return dE;
+}
+
+/**
+ * Return the palette entry whose color is perceptually closest (by CIEDE2000)
  * to the given target color.
  *
  * An optional `fallback` entry is returned when the palette is empty.
@@ -61,11 +227,13 @@ export function findClosestColor(
     throw new Error('findClosestColor: palette must not be empty');
   }
 
+  const targetLab = getCachedLab(target);
   let minDist = Infinity;
   let closest = palette[0];
 
   for (const entry of palette) {
-    const dist = colorDistance(target, entry.color);
+    const entryLab = getCachedLab(entry.color);
+    const dist = ciede2000(targetLab, entryLab);
     if (dist < minDist) {
       minDist = dist;
       closest = entry;
