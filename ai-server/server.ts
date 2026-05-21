@@ -1,7 +1,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawn, execSync } from 'node:child_process';
+import { spawn, execSync, type ChildProcess } from 'node:child_process';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer, WebSocket } from 'ws';
@@ -79,8 +79,13 @@ const server = http.createServer((req, res) => {
 
 const wss = new WebSocketServer({ server, path: '/generate' });
 
-// Simple queue: only one codex process at a time
 let queue: Promise<void> = Promise.resolve();
+
+function send(ws: WebSocket, msg: object): void {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(msg));
+  }
+}
 
 wss.on('connection', (ws: WebSocket, req: http.IncomingMessage) => {
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
@@ -91,6 +96,17 @@ wss.on('connection', (ws: WebSocket, req: http.IncomingMessage) => {
   }
 
   let received = false;
+  let aborted = false;
+  let activeChild: ChildProcess | null = null;
+
+  // HIGH #5: Kill codex if frontend disconnects
+  ws.on('close', () => {
+    aborted = true;
+    if (activeChild) {
+      activeChild.kill('SIGTERM');
+      activeChild = null;
+    }
+  });
 
   ws.on('message', (data: Buffer) => {
     if (received) return;
@@ -113,20 +129,29 @@ wss.on('connection', (ws: WebSocket, req: http.IncomingMessage) => {
     const queueHeartbeat = setInterval(() => {
       send(ws, { type: 'progress', text: '排队中...' });
     }, 20_000);
-    queue = queue.then(() => {
-      clearInterval(queueHeartbeat);
-      send(ws, { type: 'progress', text: '开始处理...' });
-      return handleGenerate(ws, image, prompt);
-    });
+
+    // HIGH #4: Queue with catch to prevent poisoning
+    queue = queue
+      .catch(() => {})
+      .then(async () => {
+        clearInterval(queueHeartbeat);
+        if (aborted || ws.readyState !== WebSocket.OPEN) return;
+        send(ws, { type: 'progress', text: '开始处理...' });
+        await handleGenerate(ws, image, prompt, (child) => { activeChild = child; }, () => aborted);
+      })
+      .catch((err) => {
+        console.error('Queue job error:', err);
+        send(ws, { type: 'error', error: 'Internal error' });
+      })
+      .finally(() => {
+        clearInterval(queueHeartbeat);
+      });
+
     send(ws, { type: 'progress', text: '排队中，请稍候...' });
   });
 });
 
-function send(ws: WebSocket, msg: object): void {
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(msg));
-  }
-}
+// ── History management ─────────────────────────────────────────────────────
 
 const MAX_HISTORY = 50;
 
@@ -142,7 +167,15 @@ function pruneHistory(): void {
   } catch {}
 }
 
-async function handleGenerate(ws: WebSocket, image: string, prompt: string): Promise<void> {
+// ── Image generation ───────────────────────────────────────────────────────
+
+async function handleGenerate(
+  ws: WebSocket,
+  image: string,
+  prompt: string,
+  onChild: (child: ChildProcess) => void,
+  isAborted: () => boolean
+): Promise<void> {
   const uuid = crypto.randomUUID();
   const inputPath = path.join(tmpDir, `${uuid}-input.png`);
   const outputPath = path.join(tmpDir, `${uuid}-output.png`);
@@ -152,6 +185,8 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
   let codexLog = '';
 
   try {
+    if (isAborted()) return;
+
     const hasImage = !!image;
     const codexHome = process.env.CODEX_HOME || path.join(process.env.HOME || '', '.codex');
     const genDir = path.join(codexHome, 'generated_images');
@@ -172,27 +207,32 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
 
     send(ws, { type: 'progress', text: '正在调用 Codex 生成图片...' });
 
-    // Heartbeat keeps the WebSocket alive through reverse proxies
     heartbeat = setInterval(() => {
       send(ws, { type: 'progress', text: '处理中...' });
     }, 20_000);
 
-    // Spawn codex as child process to stream output
+    // HIGH #2: Spawn codex directly, pipe prompt via stdin
     await new Promise<void>((resolve, reject) => {
-      const child = spawn('/bin/bash', ['-c', 'echo "$CODEX_PROMPT" | codex exec -'], {
+      const child = spawn('codex', ['exec', '-'], {
         cwd: tmpDir,
-        env: { ...process.env, CODEX_PROMPT: codexPrompt },
+        env: process.env,
         stdio: ['pipe', 'pipe', 'pipe'],
       });
+
+      onChild(child);
+
+      child.stdin.end(codexPrompt);
 
       const timeout = setTimeout(() => {
         child.kill('SIGTERM');
         reject(new Error('Codex timed out after 10 minutes'));
       }, 600_000);
 
+      const MAX_LOG = 64_000;
+
       child.stdout.on('data', (chunk: Buffer) => {
         const text = chunk.toString();
-        codexLog += text;
+        codexLog = (codexLog + text).slice(-MAX_LOG);
         for (const line of text.split('\n')) {
           const trimmed = line.trim();
           if (trimmed && trimmed.length > 2) {
@@ -202,13 +242,25 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
       });
 
       child.stderr.on('data', (chunk: Buffer) => {
-        codexLog += chunk.toString();
+        codexLog = (codexLog + chunk.toString()).slice(-MAX_LOG);
       });
 
-      child.on('close', () => {
+      // HIGH #1: Check exit code
+      child.on('close', (code, signal) => {
         clearTimeout(timeout);
         if (heartbeat) clearInterval(heartbeat);
-        resolve();
+        onChild(null as unknown as ChildProcess);
+
+        if (isAborted()) {
+          reject(new Error('Aborted'));
+          return;
+        }
+
+        if (code === 0 || code === null) {
+          resolve();
+        } else {
+          reject(new Error(`Codex exited with ${signal ? `signal ${signal}` : `code ${code}`}`));
+        }
       });
 
       child.on('error', (err) => {
@@ -217,6 +269,8 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
         reject(err);
       });
     });
+
+    if (isAborted()) return;
 
     send(ws, { type: 'progress', text: '正在读取生成的图片...' });
 
@@ -236,6 +290,7 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
     const outputBase64 = outputBuffer.toString('base64');
     send(ws, { type: 'done', success: true, image: outputBase64 });
   } catch (err) {
+    if (isAborted()) return;
     const message = err instanceof Error ? err.message : String(err);
     if (codexLog) console.error('Codex failed. Log:\n', codexLog.slice(-2000));
     send(ws, { type: 'error', error: message });
@@ -244,7 +299,6 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
     try { if (fs.existsSync(markerPath)) fs.unlinkSync(markerPath); } catch {}
     try { if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath); } catch {}
     try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch {}
-    // Save history from the buffer we actually read
     try {
       if (outputBuffer) {
         const ts = new Date().toISOString().replace(/[:.]/g, '-');
