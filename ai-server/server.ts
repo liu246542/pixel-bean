@@ -147,6 +147,7 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
   const inputPath = path.join(tmpDir, `${uuid}-input.png`);
   const outputPath = path.join(tmpDir, `${uuid}-output.png`);
   let heartbeat: ReturnType<typeof setInterval> | null = null;
+  let outputBuffer: Buffer | null = null;
 
   try {
     const hasImage = !!image;
@@ -222,7 +223,6 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
     send(ws, { type: 'progress', text: '正在读取生成的图片...' });
 
     // Find the output image
-    let outputBuffer: Buffer;
     if (fs.existsSync(outputPath)) {
       outputBuffer = fs.readFileSync(outputPath);
     } else {
@@ -244,11 +244,12 @@ async function handleGenerate(ws: WebSocket, image: string, prompt: string): Pro
     if (heartbeat) clearInterval(heartbeat);
     try { if (fs.existsSync(markerPath)) fs.unlinkSync(markerPath); } catch {}
     try { if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath); } catch {}
-    // Keep output as history instead of deleting
+    try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch {}
+    // Save history from the buffer we actually read
     try {
-      if (fs.existsSync(outputPath)) {
+      if (outputBuffer) {
         const ts = new Date().toISOString().replace(/[:.]/g, '-');
-        fs.renameSync(outputPath, path.join(tmpDir, `history-${ts}.png`));
+        fs.writeFileSync(path.join(tmpDir, `history-${ts}.png`), outputBuffer);
       }
     } catch {}
     pruneHistory();
