@@ -974,10 +974,41 @@ a:hover {
 
 .guide-header h3 { margin: 0; font-size: 1rem; }
 
-.guide-color-nav {
+.guide-mode-switch {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.guide-mode-switch .btn { flex: 1; }
+.guide-mode-switch .btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.guide-board-nav { margin-bottom: 10px; }
+
+.guide-board-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.guide-board-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  min-width: 100px;
+  text-align: center;
+}
+
+.guide-nav-list {
   flex: 1;
   overflow-y: auto;
   margin-bottom: 12px;
+}
+
+.guide-row-num {
+  font-family: monospace;
+  font-weight: 600;
+  min-width: 32px;
 }
 
 .guide-color-item {

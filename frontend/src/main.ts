@@ -698,7 +698,8 @@ function bindFocusEvents(): void {
 
   $guideBtn.addEventListener('click', () => {
     if (grid.length === 0) return;
-    showGuideModal(grid, currentSystem);
+    const bs = $boardSplitToggle.checked ? parseInt($boardSize.value) : undefined;
+    showGuideModal(grid, currentSystem, bs);
   });
 }
 
