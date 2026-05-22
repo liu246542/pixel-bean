@@ -429,6 +429,46 @@ function syncPresetState(groupId: string, val: string): void {
   });
 }
 
+function getBoardSize(): number {
+  return parseInt($boardSize.value) || 29;
+}
+
+function bindGranularityPresets(): void {
+  const group = document.getElementById('granularityPresets');
+  if (!group) return;
+
+  function updatePresetLabels(): void {
+    const bs = getBoardSize();
+    group!.querySelectorAll('.preset-btn').forEach(btn => {
+      const mult = parseInt((btn as HTMLElement).dataset.val || '1');
+      (btn as HTMLElement).dataset.computed = String(bs * mult);
+    });
+  }
+
+  updatePresetLabels();
+  $boardSize.addEventListener('change', updatePresetLabels);
+
+  group.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest('.preset-btn') as HTMLElement | null;
+    if (!btn) return;
+    const mult = parseInt(btn.dataset.val || '1');
+    const val = getBoardSize() * mult;
+    $granularity.value = String(val);
+    group!.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    processImage();
+  });
+
+  $granularity.addEventListener('change', () => {
+    const val = parseInt($granularity.value);
+    const bs = getBoardSize();
+    group!.querySelectorAll('.preset-btn').forEach(b => {
+      const mult = parseInt((b as HTMLElement).dataset.val || '0');
+      b.classList.toggle('active', bs * mult === val);
+    });
+  });
+}
+
 function bindPresetGroup(groupId: string, input: HTMLInputElement): void {
   const group = document.getElementById(groupId);
   if (!group) return;
@@ -442,7 +482,6 @@ function bindPresetGroup(groupId: string, input: HTMLInputElement): void {
     btn.classList.add('active');
     processImage();
   });
-  // Sync active state when input changes manually
   input.addEventListener('change', () => {
     const val = input.value;
     group.querySelectorAll('.preset-btn').forEach(b => {
@@ -452,8 +491,8 @@ function bindPresetGroup(groupId: string, input: HTMLInputElement): void {
 }
 
 function bindSettingsEvents(): void {
-  // Granularity with presets
-  bindPresetGroup('granularityPresets', $granularity);
+  // Granularity with board-aware presets
+  bindGranularityPresets();
   $granularity.addEventListener('change', () => processImage());
 
   // Merge threshold (减色) with presets
