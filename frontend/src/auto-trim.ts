@@ -19,8 +19,9 @@ export function autoTrim(imageSrc: string, threshold = 240, padding = 2): Promis
 
       let top = 0, bottom = height - 1, left = 0, right = width - 1;
 
-      // Allow up to 2% non-blank pixels in a row/col (tolerates stray dots)
-      const tolerance = 0.02;
+      // Allow up to 0.5% non-blank pixels in a row/col (tolerates stray dots
+      // but won't trim sparse real content like thin lines)
+      const tolerance = 0.005;
 
       function isRowBlank(y: number): boolean {
         let nonBlank = 0;
@@ -43,6 +44,9 @@ export function autoTrim(imageSrc: string, threshold = 240, padding = 2): Promis
       for (top = 0; top < height; top++) {
         if (!isRowBlank(top)) break;
       }
+
+      // All rows blank — nothing to trim to
+      if (top >= height) { resolve(null); return; }
 
       // Scan bottom
       for (bottom = height - 1; bottom >= top; bottom--) {

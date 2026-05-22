@@ -252,8 +252,11 @@ export function showGuideModal(grid: MappedPixel[][], system: ColorSystem, board
     else if (mode === 'row' && activeRowIdx > 0) { activeRowIdx--; renderAll(); }
   });
   overlay.querySelector('[data-step="next"]')!.addEventListener('click', () => {
-    if (mode === 'color') { activeColorIdx++; renderAll(); }
-    else if (mode === 'row') { activeRowIdx++; renderAll(); }
+    const viewGrid = getActiveGrid();
+    const maxColor = generateColorGuide(viewGrid, system).length - 1;
+    const maxRow = generateRowGuide(viewGrid, system).length - 1;
+    if (mode === 'color' && activeColorIdx < maxColor) { activeColorIdx++; renderAll(); }
+    else if (mode === 'row' && activeRowIdx < maxRow) { activeRowIdx++; renderAll(); }
   });
 
   function updateStepButtons(total: number, current: number): void {
