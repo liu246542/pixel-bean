@@ -1,7 +1,6 @@
 import './style.css';
 
 import type { MappedPixel, ColorSystem, PixelationMode, PaletteColor } from './types';
-import { EditHistory } from './history';
 import { TRANSPARENT_KEY } from './types';
 import {
   buildFullPalette,
@@ -26,6 +25,7 @@ import {
 } from './ai-client';
 import type { AIServiceConfig } from './ai-client';
 import { showCropModal } from './crop';
+import { showEditor } from './editor';
 import { autoTrim } from './auto-trim';
 import { autoSave, autoLoad, restoreGrid, exportCsv, importCsv } from './storage';
 import { exportPdf } from './pdf-export';
@@ -105,11 +105,6 @@ const $previewCanvas = document.getElementById('previewCanvas') as HTMLCanvasEle
 const $tooltip = document.getElementById('tooltip') as HTMLDivElement;
 
 const $editToggle = document.getElementById('editToggle') as HTMLButtonElement;
-const $editToolbar = document.getElementById('editToolbar') as HTMLDivElement;
-const $editPalette = document.getElementById('editPalette') as HTMLDivElement;
-const $editUndo = document.getElementById('editUndo') as HTMLButtonElement;
-const $editRedo = document.getElementById('editRedo') as HTMLButtonElement;
-const $editDone = document.getElementById('editDone') as HTMLButtonElement;
 
 const $granularity = document.getElementById('granularity') as HTMLInputElement;
 const $mergeThreshold = document.getElementById('mergeThreshold') as HTMLInputElement;
@@ -147,10 +142,7 @@ let grid: MappedPixel[][] = [];
 const excludedHexes = new Set<string>();
 let aiConfig: AIServiceConfig | null = null;
 let aiMode: 'optimize' | 'generate' | null = null;
-let editMode = false;
-let editColor: { rgb: { r: number; g: number; b: number }; hex: string } | null = null;
 let processGeneration = 0;
-const editHistory = new EditHistory();
 
 // ── Initialization ──────────────────────────────────────────────────────────
 
@@ -582,96 +574,15 @@ function bindPreviewEvents(): void {
 
 // ── Pixel editing ───────────────────────────────────────────────────────────
 
-function updateUndoRedoButtons(): void {
-  $editUndo.disabled = !editHistory.canUndo();
-  $editRedo.disabled = !editHistory.canRedo();
-}
-
 function bindEditEvents(): void {
   $editToggle.addEventListener('click', () => {
-    editMode = true;
-    $editToolbar.classList.remove('hidden');
-    $editToggle.classList.add('hidden');
-    $previewCanvas.style.cursor = 'crosshair';
-    editHistory.push(grid);
-    updateUndoRedoButtons();
-    buildEditPalette();
-  });
-
-  $editDone.addEventListener('click', () => {
-    editMode = false;
-    editColor = null;
-    $editToolbar.classList.add('hidden');
-    $editToggle.classList.remove('hidden');
-    $previewCanvas.style.cursor = '';
-    editHistory.clear();
-  });
-
-  $editUndo.addEventListener('click', () => {
-    const prev = editHistory.undo();
-    if (prev) {
-      grid = prev;
+    if (grid.length === 0) return;
+    showEditor(grid, currentSystem, (result) => {
+      grid = result.grid;
       redrawPreview();
       updateColorStats();
-      updateUndoRedoButtons();
-    }
-  });
-
-  $editRedo.addEventListener('click', () => {
-    const next = editHistory.redo();
-    if (next) {
-      grid = next;
-      redrawPreview();
-      updateColorStats();
-      updateUndoRedoButtons();
-    }
-  });
-
-  $previewCanvas.addEventListener('click', (e) => {
-    if (!editMode || !editColor || grid.length === 0) return;
-    const hit = getCellAt($previewCanvas, grid, e.clientX, e.clientY);
-    if (!hit || hit.cell.isExternal) return;
-
-    hit.cell.color = { ...editColor.rgb };
-    hit.cell.paletteId = editColor.hex;
-    redrawPreview();
-    updateColorStats();
-    editHistory.push(grid);
-    updateUndoRedoButtons();
-  });
-}
-
-function buildEditPalette(): void {
-  $editPalette.innerHTML = '';
-  const colorsInGrid = new Map<string, { r: number; g: number; b: number }>();
-
-  for (const row of grid) {
-    for (const cell of row) {
-      if (cell.isExternal || cell.paletteId === TRANSPARENT_KEY) continue;
-      const hex = rgbToHex(cell.color.r, cell.color.g, cell.color.b);
-      if (!colorsInGrid.has(hex)) colorsInGrid.set(hex, { ...cell.color });
-    }
-  }
-
-  // Also add some common palette colors not in the grid
-  const activePalette = getActivePalette();
-  for (const pc of activePalette.slice(0, 30)) {
-    const hex = pc.name.toUpperCase();
-    if (!colorsInGrid.has(hex) && pc.color) colorsInGrid.set(hex, { ...pc.color });
-  }
-
-  for (const [hex, rgb] of colorsInGrid) {
-    const swatch = document.createElement('div');
-    swatch.className = 'edit-palette-color';
-    swatch.style.backgroundColor = hex;
-    swatch.title = getDisplayKey(hex, currentSystem);
-    swatch.addEventListener('click', () => {
-      editColor = { rgb, hex };
-      $editPalette.querySelectorAll('.edit-palette-color').forEach(el => el.classList.remove('active'));
-      swatch.classList.add('active');
     });
-    $editPalette.appendChild(swatch);
-  }
+  });
 }
 
 // ── Crop ────────────────────────────────────────────────────────────────────

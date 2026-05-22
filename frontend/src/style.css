@@ -1135,6 +1135,97 @@ a:hover {
   .guide-content { padding: 16px; }
 }
 
+/* ── Editor overlay ─────────────────────────────────────────────────────── */
+.editor-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: var(--bg);
+}
+
+.editor-layout {
+  display: flex;
+  height: 100vh;
+  height: 100dvh;
+}
+
+.editor-canvas-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 12px;
+  background: #FAFAFA;
+}
+
+.editor-canvas {
+  display: block;
+  cursor: crosshair;
+}
+
+.editor-sidebar {
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  padding: 16px;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.editor-header h3 { margin: 0; font-size: 1rem; }
+
+.editor-header-btns { display: flex; gap: 6px; }
+
+.editor-tools {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.editor-palette-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.editor-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+  overflow-y: auto;
+  align-content: flex-start;
+}
+
+.editor-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.editor-swatch:hover { border-color: var(--border); }
+.editor-swatch.active { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary); }
+
+@media (max-width: 768px) {
+  .editor-layout { flex-direction: column; }
+  .editor-sidebar {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    max-height: 40vh;
+  }
+}
+
 /* ── Crop modal ─────────────────────────────────────────────────────────── */
 
 .crop-overlay {
