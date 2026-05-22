@@ -189,7 +189,16 @@ function init(): void {
     grid = restoreGrid(saved);
     currentSystem = saved.system;
     $granularity.value = String(saved.granularity);
-    syncPresetState('granularityPresets', $granularity.value);
+    // Sync granularity preset by matching multiplier (val * boardSize == granularity)
+    const bs = getBoardSize();
+    const gVal = parseInt($granularity.value);
+    const gGroup = document.getElementById('granularityPresets');
+    if (gGroup) {
+      gGroup.querySelectorAll('.preset-btn').forEach(b => {
+        const mult = parseInt((b as HTMLElement).dataset.val || '0');
+        b.classList.toggle('active', mult * bs === gVal);
+      });
+    }
     $mergeThreshold.value = String(saved.mergeThreshold);
     syncPresetState('mergePresets', $mergeThreshold.value);
     $pixelMode.value = saved.mode;
@@ -446,7 +455,16 @@ function bindGranularityPresets(): void {
   }
 
   updatePresetLabels();
-  $boardSize.addEventListener('change', updatePresetLabels);
+  $boardSize.addEventListener('change', () => {
+    updatePresetLabels();
+    // If a preset is active, recompute granularity from the new board size
+    const active = group!.querySelector('.preset-btn.active') as HTMLElement | null;
+    if (active) {
+      const mult = parseInt(active.dataset.val || '1');
+      $granularity.value = String(getBoardSize() * mult);
+      processImage();
+    }
+  });
 
   group.addEventListener('click', (e) => {
     const btn = (e.target as HTMLElement).closest('.preset-btn') as HTMLElement | null;
