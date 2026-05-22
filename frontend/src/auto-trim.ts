@@ -19,32 +19,44 @@ export function autoTrim(imageSrc: string, threshold = 240, padding = 2): Promis
 
       let top = 0, bottom = height - 1, left = 0, right = width - 1;
 
-      // Scan top
-      outer_top: for (top = 0; top < height; top++) {
+      // Allow up to 2% non-blank pixels in a row/col (tolerates stray dots)
+      const tolerance = 0.02;
+
+      function isRowBlank(y: number): boolean {
+        let nonBlank = 0;
         for (let x = 0; x < width; x++) {
-          if (!isBlank(x, top)) break outer_top;
+          if (!isBlank(x, y)) nonBlank++;
         }
+        return nonBlank / width <= tolerance;
+      }
+
+      function isColBlank(x: number, yStart: number, yEnd: number): boolean {
+        let nonBlank = 0;
+        const h = yEnd - yStart + 1;
+        for (let y = yStart; y <= yEnd; y++) {
+          if (!isBlank(x, y)) nonBlank++;
+        }
+        return nonBlank / h <= tolerance;
+      }
+
+      // Scan top
+      for (top = 0; top < height; top++) {
+        if (!isRowBlank(top)) break;
       }
 
       // Scan bottom
-      outer_bottom: for (bottom = height - 1; bottom >= top; bottom--) {
-        for (let x = 0; x < width; x++) {
-          if (!isBlank(x, bottom)) break outer_bottom;
-        }
+      for (bottom = height - 1; bottom >= top; bottom--) {
+        if (!isRowBlank(bottom)) break;
       }
 
       // Scan left
-      outer_left: for (left = 0; left < width; left++) {
-        for (let y = top; y <= bottom; y++) {
-          if (!isBlank(left, y)) break outer_left;
-        }
+      for (left = 0; left < width; left++) {
+        if (!isColBlank(left, top, bottom)) break;
       }
 
       // Scan right
-      outer_right: for (right = width - 1; right >= left; right--) {
-        for (let y = top; y <= bottom; y++) {
-          if (!isBlank(right, y)) break outer_right;
-        }
+      for (right = width - 1; right >= left; right--) {
+        if (!isColBlank(right, top, bottom)) break;
       }
 
       // Add padding
