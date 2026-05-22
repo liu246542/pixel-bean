@@ -26,6 +26,7 @@ import {
 } from './ai-client';
 import type { AIServiceConfig } from './ai-client';
 import { showCropModal } from './crop';
+import { autoTrim } from './auto-trim';
 import { autoSave, autoLoad, restoreGrid, exportCsv, importCsv } from './storage';
 import { exportPdf } from './pdf-export';
 import { enterFocusMode, isFocusActive, redrawFocus } from './focus';
@@ -89,6 +90,7 @@ const $fileInput = document.getElementById('fileInput') as HTMLInputElement;
 
 const $imageActions = document.getElementById('imageActions') as HTMLDivElement;
 const $cropBtn = document.getElementById('cropBtn') as HTMLButtonElement;
+const $trimBtn = document.getElementById('trimBtn') as HTMLButtonElement;
 
 const $aiActions = document.getElementById('aiActions') as HTMLDivElement;
 const $aiOptimize = document.getElementById('aiOptimize') as HTMLButtonElement;
@@ -624,6 +626,19 @@ function bindCropEvents(): void {
     if (result) {
       imageSrc = result;
       processImage();
+    }
+  });
+
+  $trimBtn.addEventListener('click', async () => {
+    const src = originalImageSrc || imageSrc;
+    if (!src) return;
+    const trimmed = await autoTrim(src);
+    if (trimmed) {
+      imageSrc = trimmed;
+      originalImageSrc = trimmed;
+      processImage();
+    } else {
+      alert('未检测到明显白边');
     }
   });
 }
