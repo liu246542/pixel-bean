@@ -58,12 +58,11 @@ export function showEditor(
   const redoBtn = overlay.querySelector('[data-editor="redo"]') as HTMLButtonElement;
 
   function redraw(): void {
-    drawPreview(canvas, editGrid, system);
-
-    // Enlarge canvas to fill area
     const area = canvas.parentElement!;
     const rows = editGrid.length;
-    const cols = editGrid[0].length;
+    const cols = rows > 0 ? editGrid[0].length : 0;
+    if (rows === 0 || cols === 0) return;
+
     const cellSize = Math.max(6, Math.floor(Math.min(
       (area.clientWidth - 24) / cols,
       (area.clientHeight - 24) / rows
@@ -117,6 +116,9 @@ export function showEditor(
     const hit = getCellAt(canvas, editGrid, e.clientX, e.clientY);
     if (!hit || hit.cell.isExternal) return;
 
+    const curHex = rgbToHex(hit.cell.color.r, hit.cell.color.g, hit.cell.color.b);
+    if (curHex === editColor.hex) return;
+
     hit.cell.color = { ...editColor.rgb };
     hit.cell.paletteId = editColor.hex;
     history.push(editGrid);
@@ -134,20 +136,25 @@ export function showEditor(
     if (next) { editGrid = next; redraw(); updateButtons(); }
   });
 
+  // Resize
+  const resizeObs = new ResizeObserver(() => redraw());
+  resizeObs.observe(canvas.parentElement!);
+
+  function teardown(): void {
+    resizeObs.disconnect();
+    overlay.remove();
+  }
+
   // Save
   overlay.querySelector('[data-editor="save"]')!.addEventListener('click', () => {
-    overlay.remove();
+    teardown();
     onSave({ grid: editGrid });
   });
 
   // Cancel
   overlay.querySelector('[data-editor="cancel"]')!.addEventListener('click', () => {
-    overlay.remove();
+    teardown();
   });
-
-  // Resize
-  const resizeObs = new ResizeObserver(() => redraw());
-  resizeObs.observe(canvas.parentElement!);
 
   buildPalette();
   redraw();
