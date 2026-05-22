@@ -177,6 +177,10 @@ export function showGuideModal(grid: MappedPixel[][], system: ColorSystem, board
           <button class="btn btn--sm" data-mode="row">按行</button>
         </div>
         <div class="guide-nav-list"></div>
+        <div class="guide-step-nav">
+          <button class="btn btn--sm" data-step="prev">上一个</button>
+          <button class="btn btn--sm btn--primary" data-step="next">下一个</button>
+        </div>
         <div class="guide-actions">
           <button class="btn btn--sm" data-guide="copy">复制全部</button>
           <button class="btn btn--sm" data-guide="export">导出文本</button>
@@ -242,6 +246,23 @@ export function showGuideModal(grid: MappedPixel[][], system: ColorSystem, board
     arrow.textContent = collapsed ? '▼' : '▶';
   });
 
+  // Step prev/next navigation
+  overlay.querySelector('[data-step="prev"]')!.addEventListener('click', () => {
+    if (mode === 'color' && activeColorIdx > 0) { activeColorIdx--; renderAll(); }
+    else if (mode === 'row' && activeRowIdx > 0) { activeRowIdx--; renderAll(); }
+  });
+  overlay.querySelector('[data-step="next"]')!.addEventListener('click', () => {
+    if (mode === 'color') { activeColorIdx++; renderAll(); }
+    else if (mode === 'row') { activeRowIdx++; renderAll(); }
+  });
+
+  function updateStepButtons(total: number, current: number): void {
+    const prev = overlay.querySelector('[data-step="prev"]') as HTMLButtonElement;
+    const next = overlay.querySelector('[data-step="next"]') as HTMLButtonElement;
+    prev.disabled = current <= 0;
+    next.disabled = current >= total - 1;
+  }
+
   function renderAll(): void {
     renderBoardNav();
     if (mode === 'color') renderColorMode();
@@ -286,6 +307,7 @@ export function showGuideModal(grid: MappedPixel[][], system: ColorSystem, board
     }
     html += '</div>';
     textArea.innerHTML = html;
+    updateStepButtons(guides.length, activeColorIdx);
   }
 
   function renderRowMode(): void {
@@ -322,6 +344,7 @@ export function showGuideModal(grid: MappedPixel[][], system: ColorSystem, board
     }
     html += '</div>';
     textArea.innerHTML = html;
+    updateStepButtons(rowGuides.length, activeRowIdx);
   }
 
   function generateFullText(): string {

@@ -1030,6 +1030,13 @@ a:hover {
   font-variant-numeric: tabular-nums;
 }
 
+.guide-step-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
 .guide-actions {
   display: flex;
   gap: 8px;
