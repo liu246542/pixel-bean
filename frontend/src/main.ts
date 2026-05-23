@@ -27,6 +27,7 @@ import type { AIServiceConfig } from './ai-client';
 import { showCropModal } from './crop';
 import { showEditor } from './editor';
 import { autoTrim } from './auto-trim';
+import { majorityFilter } from './majority-filter';
 import { autoSave, autoLoad, restoreGrid, exportCsv, importCsv } from './storage';
 import { exportPdf } from './pdf-export';
 import { enterFocusMode, isFocusActive, redrawFocus } from './focus';
@@ -91,6 +92,7 @@ const $fileInput = document.getElementById('fileInput') as HTMLInputElement;
 const $imageActions = document.getElementById('imageActions') as HTMLDivElement;
 const $cropBtn = document.getElementById('cropBtn') as HTMLButtonElement;
 const $trimBtn = document.getElementById('trimBtn') as HTMLButtonElement;
+const $smoothBtn = document.getElementById('smoothBtn') as HTMLButtonElement;
 
 const $aiActions = document.getElementById('aiActions') as HTMLDivElement;
 const $aiOptimize = document.getElementById('aiOptimize') as HTMLButtonElement;
@@ -205,6 +207,7 @@ function init(): void {
     $focusBtn.disabled = false;
     $guideBtn.disabled = false;
     $editToggle.classList.remove('hidden');
+    $smoothBtn.classList.remove('hidden');
   }
 
   // Redraw canvas when returning from background (browsers may discard canvas content)
@@ -314,6 +317,7 @@ function processImage(): void {
     $guideBtn.disabled = false;
     $imageActions.classList.remove('hidden');
     $editToggle.classList.remove('hidden');
+    $smoothBtn.classList.remove('hidden');
 
     // Show AI actions if connected
     if (aiConfig) {
@@ -609,6 +613,13 @@ function bindCropEvents(): void {
       alert('未检测到明显白边');
     }
   });
+
+  $smoothBtn.addEventListener('click', () => {
+    if (grid.length === 0) return;
+    majorityFilter(grid);
+    redrawPreview();
+    updateColorStats();
+  });
 }
 
 // ── Export ───────────────────────────────────────────────────────────────────
@@ -663,6 +674,7 @@ function bindCsvEvents(): void {
       $focusBtn.disabled = false;
     $guideBtn.disabled = false;
       $editToggle.classList.remove('hidden');
+    $smoothBtn.classList.remove('hidden');
     } catch (e) {
       alert(`导入失败: ${e instanceof Error ? e.message : e}`);
     }
