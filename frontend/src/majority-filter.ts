@@ -36,8 +36,9 @@ export function majorityFilter(grid: MappedPixel[][]): void {
       }
 
       // Find the most common color in neighborhood
+      // Seed with current cell's count so ties preserve the original
       let bestHex = cellHex;
-      let bestCount = 0;
+      let bestCount = freq.get(cellHex)?.count ?? 0;
       for (const [hex, { count }] of freq) {
         if (count > bestCount) {
           bestCount = count;
