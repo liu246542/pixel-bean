@@ -133,8 +133,10 @@ function drawGuidePreview(canvas: HTMLCanvasElement, grid: MappedPixel[][], syst
         ctx.fillText(getDisplayKey(hex, system), x + cellSize / 2, y + cellSize / 2);
       }
 
-      ctx.strokeStyle = 'rgba(0,0,0,0.06)';
-      ctx.lineWidth = 0.5;
+      const majorR = r % 5 === 0;
+      const majorC = c % 5 === 0;
+      ctx.strokeStyle = (majorR || majorC) ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.06)';
+      ctx.lineWidth = (majorR || majorC) ? 1 : 0.5;
       ctx.strokeRect(x, y, cellSize, cellSize);
     }
   }

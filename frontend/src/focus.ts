@@ -413,8 +413,10 @@ function drawFocusCanvas(): void {
       ctx.fillRect(x, y, cellSize, cellSize);
       ctx.globalAlpha = 1;
 
-      ctx.strokeStyle = 'rgba(0,0,0,0.08)';
-      ctx.lineWidth = 0.5;
+      const majorR = r % 5 === 0;
+      const majorC = c % 5 === 0;
+      ctx.strokeStyle = (majorR || majorC) ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.08)';
+      ctx.lineWidth = (majorR || majorC) ? 1 : 0.5;
       ctx.strokeRect(x, y, cellSize, cellSize);
 
       if (isActive && !isDone && cellSize >= 14) {
