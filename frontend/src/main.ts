@@ -137,7 +137,7 @@ const $loadingEta = document.getElementById('loadingEta') as HTMLParagraphElemen
 // ── Application state ───────────────────────────────────────────────────────
 
 const fullPalette: PaletteColor[] = buildFullPalette();
-let currentSystem: ColorSystem = 'MARD';
+let currentSystem: ColorSystem = 'MARD-AM';
 let imageSrc: string | null = null;
 let originalImageSrc: string | null = null;
 let grid: MappedPixel[][] = [];

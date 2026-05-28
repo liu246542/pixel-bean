@@ -10,8 +10,8 @@ const typedColorData = colorData as ColorDataMap;
 // ── Constants ────────────────────────────────────────────────────────────────
 
 export const COLOR_SYSTEM_OPTIONS: { key: ColorSystem; name: string }[] = [
-  { key: 'MARD', name: 'MARD' },
   { key: 'MARD-AM', name: 'MARD (A-M)' },
+  { key: 'MARD', name: 'MARD' },
   { key: 'COCO', name: 'COCO' },
   { key: '漫漫', name: '漫漫' },
   { key: '盼盼', name: '盼盼' },
