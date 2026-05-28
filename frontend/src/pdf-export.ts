@@ -106,7 +106,7 @@ export function exportPdf(
 
   // ── Board detail pages ────────────────────────────────────────────────────
   // Auto-enable when overview cells are too small for labels
-  const effectiveBoardSize = boardSize ?? (autoSplitWhenSmall && cellOverview < 3 ? 29 : 0);
+  const effectiveBoardSize = boardSize ?? (autoSplitWhenSmall && cellOverview < 3 ? 50 : 0);
   if (effectiveBoardSize > 0) {
     const boards = splitBoards(rows, cols, effectiveBoardSize);
     for (const board of boards) {

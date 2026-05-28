@@ -524,10 +524,12 @@ function bindSettingsEvents(): void {
   // Pixel mode
   $pixelMode.addEventListener('change', () => processImage());
 
-  // Color system
+  // Color system — re-pixelate if source image exists (palette changes)
   $colorSystem.addEventListener('change', () => {
     currentSystem = $colorSystem.value as ColorSystem;
-    if (grid.length > 0) {
+    if (imageSrc) {
+      processImage();
+    } else if (grid.length > 0) {
       redrawPreview();
       updateColorStats();
     }
