@@ -279,17 +279,25 @@ function processImage(): void {
     const imageData = ctx.getImageData(0, 0, img.width, img.height);
 
     // Calculate grid dimensions
-    let cols = parseInt($granularity.value, 10);
-    if (!cols || cols < 10) cols = 10;
-    if (cols > 200) cols = 200;
-    $granularity.value = String(cols);
+    let granularity = parseInt($granularity.value, 10);
+    if (!granularity || granularity < 10) granularity = 10;
+    if (granularity > 200) granularity = 200;
+    $granularity.value = String(granularity);
 
     let threshold = parseInt($mergeThreshold.value, 10);
     if (isNaN(threshold) || threshold < 0) threshold = 0;
     if (threshold > 100) threshold = 100;
     $mergeThreshold.value = String(threshold);
 
-    const rows = Math.max(1, Math.round(cols * (img.height / img.width)));
+    // Granularity = long edge, short edge scales proportionally
+    let cols: number, rows: number;
+    if (img.width >= img.height) {
+      cols = granularity;
+      rows = Math.max(1, Math.round(granularity * (img.height / img.width)));
+    } else {
+      rows = granularity;
+      cols = Math.max(1, Math.round(granularity * (img.width / img.height)));
+    }
 
     const activePalette = getActivePalette();
     const fallback = activePalette[0];
