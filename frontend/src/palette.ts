@@ -11,6 +11,7 @@ const typedColorData = colorData as ColorDataMap;
 
 export const COLOR_SYSTEM_OPTIONS: { key: ColorSystem; name: string }[] = [
   { key: 'MARD', name: 'MARD' },
+  { key: 'MARD-AM', name: 'MARD (A-M)' },
   { key: 'COCO', name: 'COCO' },
   { key: '漫漫', name: '漫漫' },
   { key: '盼盼', name: '盼盼' },
@@ -284,6 +285,13 @@ export function getDisplayKey(hex: string, system: ColorSystem): string {
   const normalised = hex.toUpperCase();
   const entry = typedColorData[normalised];
   if (!entry) return '?';
+
+  if (system === 'MARD-AM') {
+    const key = entry['MARD'];
+    if (!key) return '?';
+    return key[0] >= 'A' && key[0] <= 'M' ? key : '?';
+  }
+
   return entry[system] ?? '?';
 }
 

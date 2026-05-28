@@ -21,7 +21,7 @@ export interface MappedPixel {
 }
 
 // Supported bead color systems
-export type ColorSystem = 'MARD' | 'COCO' | '漫漫' | '盼盼' | '咪小窝' | 'Hama' | 'Perler' | 'Artkal-S';
+export type ColorSystem = 'MARD' | 'MARD-AM' | 'COCO' | '漫漫' | '盼盼' | '咪小窝' | 'Hama' | 'Perler' | 'Artkal-S';
 
 // Algorithm used to reduce each pixel block to a single representative color
 export type PixelationMode = 'dominant' | 'average';

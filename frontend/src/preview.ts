@@ -72,9 +72,11 @@ export function drawPreview(
       }
       ctx.fillRect(x, y, cellSize, cellSize);
 
-      // ── Grid line ──────────────────────────────────────────────────────────
-      ctx.strokeStyle = 'rgba(0,0,0,0.1)';
-      ctx.lineWidth = 0.5;
+      // ── Grid line (every 5th line is thicker) ─────────────────────────────
+      const isMajorRow = r % 5 === 0;
+      const isMajorCol = c % 5 === 0;
+      ctx.strokeStyle = (isMajorRow || isMajorCol) ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.1)';
+      ctx.lineWidth = (isMajorRow || isMajorCol) ? 1 : 0.5;
       ctx.strokeRect(x, y, cellSize, cellSize);
 
       // ── Label ──────────────────────────────────────────────────────────────
