@@ -474,13 +474,20 @@ a:hover {
 .color-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   padding: 4px 6px;
   border-radius: calc(var(--radius) * 0.5);
-  cursor: pointer;
   font-size: 0.8125rem;
   transition: background-color 0.15s;
   user-select: none;
+}
+
+.color-checkbox {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  accent-color: var(--primary);
+  cursor: pointer;
 }
 
 .color-item:hover {

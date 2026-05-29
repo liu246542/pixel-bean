@@ -385,11 +385,19 @@ function updateColorStats(): void {
   }
 
   for (const [hex, count] of sorted) {
+    const excluded = excludedHexes.has(hex);
+
     const item = document.createElement('div');
-    item.className = 'color-item';
-    if (excludedHexes.has(hex)) {
-      item.classList.add('excluded');
-    }
+    item.className = 'color-item' + (excluded ? ' excluded' : '');
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = !excluded;
+    checkbox.className = 'color-checkbox';
+    checkbox.addEventListener('change', (e) => {
+      e.stopPropagation();
+      toggleColorExclusion(hex);
+    });
 
     const swatch = document.createElement('span');
     swatch.className = 'color-swatch';
@@ -403,12 +411,10 @@ function updateColorStats(): void {
     countSpan.className = 'color-count';
     countSpan.textContent = String(count);
 
+    item.appendChild(checkbox);
     item.appendChild(swatch);
     item.appendChild(key);
     item.appendChild(countSpan);
-
-    // Click to toggle exclusion
-    item.addEventListener('click', () => toggleColorExclusion(hex));
 
     $colorList.appendChild(item);
   }
