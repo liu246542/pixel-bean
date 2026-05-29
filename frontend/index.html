@@ -124,6 +124,11 @@
       <section class="bottom-bar">
         <div class="panel" id="statsPanel">
           <h3>颜色统计 <span id="totalCount" class="total-count"></span></h3>
+          <div class="exclude-mode-bar">
+            <span>排除后：</span>
+            <label class="exclude-mode-label"><input type="radio" name="excludeMode" value="replace" checked /> 替换相近色</label>
+            <label class="exclude-mode-label"><input type="radio" name="excludeMode" value="remove" /> 直接剔除</label>
+          </div>
           <div id="colorList" class="color-list"></div>
         </div>
         <div class="panel export-panel">

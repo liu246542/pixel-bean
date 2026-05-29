@@ -422,19 +422,41 @@ function updateColorStats(): void {
 
 // ── Color exclusion ─────────────────────────────────────────────────────────
 
+function getExcludeMode(): 'replace' | 'remove' {
+  const radio = document.querySelector('input[name="excludeMode"]:checked') as HTMLInputElement | null;
+  return (radio?.value === 'remove') ? 'remove' : 'replace';
+}
+
 function toggleColorExclusion(hex: string): void {
   if (excludedHexes.has(hex)) {
-    // Remove exclusion: requires full re-pixelation
     excludedHexes.delete(hex);
     processImage();
   } else {
-    // Add exclusion: remap in-place
     excludedHexes.add(hex);
-    const activePalette = getActivePalette();
-    remapExcludedColors(grid, excludedHexes, activePalette);
+    const mode = getExcludeMode();
+    if (mode === 'remove') {
+      removeExcludedColors(grid, excludedHexes);
+    } else {
+      const activePalette = getActivePalette();
+      remapExcludedColors(grid, excludedHexes, activePalette);
+    }
     markBackground(grid);
     redrawPreview();
     updateColorStats();
+  }
+}
+
+function removeExcludedColors(g: MappedPixel[][], excluded: Set<string>): void {
+  for (const row of g) {
+    for (const cell of row) {
+      if (cell.isExternal || cell.paletteId === TRANSPARENT_KEY) continue;
+      const cellHex = rgbToHex(cell.color.r, cell.color.g, cell.color.b);
+      if (excluded.has(cellHex)) {
+        cell.paletteId = TRANSPARENT_KEY;
+        cell.color = { r: 255, g: 255, b: 255 };
+        cell.isExternal = true;
+      }
+    }
   }
 }
 

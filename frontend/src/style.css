@@ -482,6 +482,25 @@ a:hover {
   user-select: none;
 }
 
+.exclude-mode-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.exclude-mode-label {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.exclude-mode-label input { accent-color: var(--primary); }
+
 .color-checkbox {
   flex-shrink: 0;
   width: 14px;
