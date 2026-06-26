@@ -168,6 +168,7 @@ function init(): void {
   // Bind events
   bindUploadEvents();
   bindCropEvents();
+  bindExcludeModeChange();
   bindSettingsEvents();
   bindPreviewEvents();
   bindEditEvents();
@@ -425,6 +426,16 @@ function updateColorStats(): void {
 function getExcludeMode(): 'replace' | 'remove' {
   const radio = document.querySelector('input[name="excludeMode"]:checked') as HTMLInputElement | null;
   return (radio?.value === 'remove') ? 'remove' : 'replace';
+}
+
+function bindExcludeModeChange(): void {
+  document.querySelectorAll('input[name="excludeMode"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      if (excludedHexes.size > 0 && imageSrc) {
+        processImage();
+      }
+    });
+  });
 }
 
 function toggleColorExclusion(hex: string): void {
